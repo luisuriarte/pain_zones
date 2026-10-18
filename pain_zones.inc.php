@@ -295,19 +295,19 @@ function pz_getPainQualityOptions(): array
 
     if (empty($options)) {
         $options = [
-            'Sharp'     => 'Sharp',
-            'Dull'      => 'Dull',
-            'Burning'   => 'Burning',
-            'Throbbing' => 'Throbbing',
-            'Stabbing'  => 'Stabbing',
-            'Cramping'  => 'Cramping',
-            'Pressing'  => 'Pressing',
-            'Shooting'  => 'Shooting',
-            'Aching'    => 'Aching',
-            'Electric'  => 'Electric',
-            'Tingling'  => 'Tingling',
-            'Heavy'     => 'Heavy',
-            'Other'     => 'Other',
+            'sharp'     => 'Sharp',
+            'dull'      => 'Dull',
+            'burning'   => 'Burning',
+            'throbbing' => 'Throbbing',
+            'stabbing'  => 'Stabbing',
+            'cramping'  => 'Cramping',
+            'pressing'  => 'Pressing',
+            'shooting'  => 'Shooting',
+            'aching'    => 'Aching',
+            'electric'  => 'Electric',
+            'tingling'  => 'Tingling',
+            'heavy'     => 'Heavy',
+            'other'     => 'Other',
         ];
     }
 

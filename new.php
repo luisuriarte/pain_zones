@@ -807,15 +807,16 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
         const relievingEl   = document.getElementById('pz-modal-relieving');
         const notesEl       = document.getElementById('pz-modal-notes');
 
+        const otherKey = PZ.qualityOptions.find(o => o.toLowerCase() === 'other') || 'other';
         const currentQuality = mark.pain_quality || '';
         if (currentQuality && !PZ.qualityOptions.includes(currentQuality)) {
-            qualitySelect.value = 'Other';
+            qualitySelect.value = otherKey;
             qualityCustom.value = currentQuality;
             qualityCustom.style.display = 'block';
         } else {
             qualitySelect.value = currentQuality;
             qualityCustom.value = '';
-            qualityCustom.style.display = (currentQuality === 'Other') ? 'block' : 'none';
+            qualityCustom.style.display = (currentQuality && currentQuality.toLowerCase() === 'other') ? 'block' : 'none';
         }
         radiationEl.value   = mark.radiation || '';
         onsetEl.value       = mark.onset || '';
@@ -881,7 +882,7 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
 
     document.getElementById('pz-modal-quality').addEventListener('change', (e) => {
         const customEl = document.getElementById('pz-modal-quality-custom');
-        if (e.target.value === 'Other') {
+        if (e.target.value.toLowerCase() === 'other') {
             customEl.style.display = 'block';
             customEl.focus();
         } else {
@@ -902,7 +903,7 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
         const qualitySelect = document.getElementById('pz-modal-quality');
         const qualityCustom = document.getElementById('pz-modal-quality-custom');
         let qualityVal = qualitySelect.value.trim();
-        if (qualityVal === 'Other') {
+        if (qualityVal.toLowerCase() === 'other') {
             const customVal = qualityCustom.value.trim();
             if (customVal !== '') {
                 qualityVal = customVal;
