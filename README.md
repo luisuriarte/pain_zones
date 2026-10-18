@@ -68,7 +68,7 @@ Interactive clinical encounter form for anatomical pain mapping in **OpenEMR**. 
 
 | Anatomical Map & Zoom Controls | Mark Assessment Dialog |
 |:---:|:---:|
-| ![Anatomical Map with Zones and Zoom](docs/pain_zone_1.png) | ![Clinical Assessment Dialog](docs/pain_zone_3png) |
+| ![Anatomical Map with Zones and Zoom](docs/pain_zone_1.png) | ![Clinical Assessment Dialog](docs/pain_zone_3.png) |
 | *Anatomical map with tinted zones, zoom controls, and bottom scale bar.* | *NRS intensity slider, pain quality dropdown, and semiology fields.* |
 
 | Encounter Report |
