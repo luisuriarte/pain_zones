@@ -265,6 +265,56 @@ function pz_getLevelColors(): array
     return $cache;
 }
 
+/**
+ * Loads pain quality options from list_options (list_id = 'pain_zones_quality').
+ * Falls back to built-in clinical defaults if the list is missing or empty in the database.
+ *
+ * @return array<string, string> Keyed by option_id => title.
+ */
+function pz_getPainQualityOptions(): array
+{
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    $res = sqlStatement(
+        "SELECT option_id, title
+         FROM list_options
+         WHERE list_id = 'pain_zones_quality' AND activity = 1
+         ORDER BY seq, title"
+    );
+    $options = [];
+    while ($row = sqlFetchArray($res)) {
+        $optId = trim((string)($row['option_id'] ?? ''));
+        $title = trim((string)($row['title'] ?? ''));
+        if ($optId !== '') {
+            $options[$optId] = ($title !== '') ? $title : $optId;
+        }
+    }
+
+    if (empty($options)) {
+        $options = [
+            'Sharp'     => 'Sharp',
+            'Dull'      => 'Dull',
+            'Burning'   => 'Burning',
+            'Throbbing' => 'Throbbing',
+            'Stabbing'  => 'Stabbing',
+            'Cramping'  => 'Cramping',
+            'Pressing'  => 'Pressing',
+            'Shooting'  => 'Shooting',
+            'Aching'    => 'Aching',
+            'Electric'  => 'Electric',
+            'Tingling'  => 'Tingling',
+            'Heavy'     => 'Heavy',
+            'Other'     => 'Other',
+        ];
+    }
+
+    $cache = $options;
+    return $cache;
+}
+
 // ---------------------------------------------------------------------------
 // Laterality derivation (always server-side)
 // ---------------------------------------------------------------------------

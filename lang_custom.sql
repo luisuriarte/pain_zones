@@ -140,6 +140,7 @@ INSERT IGNORE INTO lang_custom (lang_description, lang_code, constant_name, defi
 ('Spanish (Latin American)', 'el', 'Moderate', 'Moderado'),
 ('Spanish (Latin American)', 'el', 'Severe', 'Severo'),
 ('Spanish (Latin American)', 'el', 'Pain Zones Level', 'Nivel de Zonas de Dolor'),
+('Spanish (Latin American)', 'el', 'Pain Zones Quality', 'Cualidad de Zonas de Dolor'),
 ('Spanish (Latin American)', 'el', 'Level 0', 'Nivel 0'),
 ('Spanish (Latin American)', 'el', 'Level 1', 'Nivel 1'),
 ('Spanish (Latin American)', 'el', 'Level 2', 'Nivel 2'),

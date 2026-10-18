@@ -10,6 +10,7 @@
 --   2. form_pain_zones_marks    Pain marks (one row per mark, child of the header)
 --   3. form_pain_zones_history  Audit trail of mark inserts, updates and deletes
 --   4. list_options             List pain_zones_level: title and levels 0-10 with colors
+--   5. list_options             List pain_zones_quality: title and clinical pain qualities
 --
 -- Zone id convention: region_subzone_side (example: thigh_anterior_left)
 -- Zone ids are in English and match the ids in the SVG files.
@@ -127,3 +128,32 @@ VALUES
   ('pain_zones_level', 'level_8',  'Level 8',  8,  0, 8,  'severe',   'stroke:#AB2F26,fill:#F44336', '', 1),
   ('pain_zones_level', 'level_9',  'Level 9',  9,  0, 9,  'severe',   'stroke:#942121,fill:#D32F2F', '', 1),
   ('pain_zones_level', 'level_10', 'Level 10', 10, 0, 10, 'severe',   'stroke:#801414,fill:#B71C1C', '', 1);
+
+
+-- ----------------------------------------------------------------------------
+-- 5. list_options: list pain_zones_quality
+-- 5.a List title row (list_id = lists), using the next free seq.
+-- 5.b Clinical qualities of pain (Sharp, Dull, Burning, etc.).
+--     Can be customized and managed via OpenEMR Administration -> Lists.
+-- ----------------------------------------------------------------------------
+INSERT IGNORE INTO `list_options`
+  (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `activity`)
+SELECT 'lists', 'pain_zones_quality', 'Pain Zones Quality', COALESCE(MAX(`seq`), 0) + 1, 0, 0, '', '', '', 1
+FROM `list_options` WHERE `list_id` = 'lists';
+
+INSERT IGNORE INTO `list_options`
+  (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `activity`)
+VALUES
+  ('pain_zones_quality', 'sharp',     'Sharp',     10,  0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'dull',      'Dull',      20,  0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'burning',   'Burning',   30,  0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'throbbing', 'Throbbing', 40,  0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'stabbing',  'Stabbing',  50,  0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'cramping',  'Cramping',  60,  0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'pressing',  'Pressing',  70,  0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'shooting',  'Shooting',  80,  0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'aching',    'Aching',    90,  0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'electric',  'Electric',  100, 0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'tingling',  'Tingling',  110, 0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'heavy',     'Heavy',     120, 0, 0, '', '', '', 1),
+  ('pain_zones_quality', 'other',     'Other',     130, 0, 0, '', '', '', 1);

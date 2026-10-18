@@ -164,25 +164,11 @@ foreach (array_keys(PZ_FIGURE_MAP) as $fig) {
     }
 }
 
-$qualityOptions = [
-    'Sharp',
-    'Dull',
-    'Burning',
-    'Throbbing',
-    'Stabbing',
-    'Cramping',
-    'Pressing',
-    'Shooting',
-    'Aching',
-    'Electric',
-    'Tingling',
-    'Heavy',
-    'Other',
-];
+$qualityOptions = pz_getPainQualityOptions();
 
 $qualityLabels = [];
-foreach ($qualityOptions as $opt) {
-    $qualityLabels[$opt] = xl($opt);
+foreach ($qualityOptions as $optId => $optTitle) {
+    $qualityLabels[$optId] = xl($optTitle);
 }
 
 $jsonFlags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_THROW_ON_ERROR;
@@ -273,10 +259,35 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
         }
         .pz-zone-clickable {
             cursor: pointer;
-            transition: filter 0.15s ease, stroke-width 0.15s ease;
+            pointer-events: all;
         }
-        .pz-zone-clickable:hover {
-            filter: brightness(0.88);
+        .pz-zone-unmarked {
+            pointer-events: all;
+            transition: fill 0.15s ease, fill-opacity 0.15s ease;
+        }
+        .pz-zone-unmarked path,
+        .pz-zone-unmarked polygon,
+        .pz-zone-unmarked rect,
+        .pz-zone-unmarked circle,
+        .pz-zone-unmarked ellipse {
+            pointer-events: all;
+            transition: fill 0.15s ease, fill-opacity 0.15s ease;
+        }
+        .pz-zone-unmarked:hover,
+        .pz-zone-unmarked:hover path,
+        .pz-zone-unmarked:hover polygon,
+        .pz-zone-unmarked:hover rect,
+        .pz-zone-unmarked:hover circle,
+        .pz-zone-unmarked:hover ellipse {
+            fill: #d5dbdb !important;
+            fill-opacity: 0.55 !important;
+        }
+        .pz-zone-marked {
+            pointer-events: all;
+            transition: filter 0.15s ease;
+        }
+        .pz-zone-marked:hover {
+            filter: brightness(0.9);
         }
         .pz-zone-tooltip {
             position: fixed;
@@ -567,8 +578,8 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
                     <label for="pz-modal-quality" class="small font-weight-bold mb-0"><?php echo xlt('Pain Quality:'); ?></label>
                     <select id="pz-modal-quality" class="form-control form-control-sm">
                         <option value=""><?php echo xlt('-- Select --'); ?></option>
-                        <?php foreach ($qualityOptions as $opt): ?>
-                            <option value="<?php echo attr($opt); ?>"><?php echo xlt($opt); ?></option>
+                        <?php foreach ($qualityOptions as $optId => $optTitle): ?>
+                            <option value="<?php echo attr($optId); ?>"><?php echo xlt($optTitle); ?></option>
                         <?php endforeach; ?>
                     </select>
                     <input type="text" id="pz-modal-quality-custom" class="form-control form-control-sm mt-1" style="display:none;" maxlength="64" placeholder="<?php echo xla('Specify other pain quality'); ?>">
@@ -629,7 +640,7 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
         palette: <?php echo json_encode($palette, $jsonFlags); ?>,
         validZones: <?php echo json_encode($validZones, $jsonFlags); ?>,
         zoneLabels: <?php echo json_encode($zoneLabels, $jsonFlags); ?>,
-        qualityOptions: <?php echo json_encode($qualityOptions, $jsonFlags); ?>,
+        qualityOptions: <?php echo json_encode(array_keys($qualityOptions), $jsonFlags); ?>,
         qualityLabels: <?php echo json_encode($qualityLabels, $jsonFlags); ?>,
         svgContent: <?php echo json_encode($svgContent, $jsonFlags); ?>,
         marks: <?php echo json_encode($clientMarks, $jsonFlags); ?>,
@@ -1239,6 +1250,26 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
             el.style.strokeOpacity = orig.strokeOpacity;
         });
         originalZoneStyles.clear();
+
+        // 1b. Classify zones as marked or unmarked (for hover feedback)
+        const markedZoneIds = new Set();
+        PZ.marks.forEach(m => {
+            if (m.figure === PZ.currentFigure && m.body_view === PZ.currentView && (m.active === undefined || m.active !== 0)) {
+                markedZoneIds.add(m.zone_id);
+            }
+        });
+
+        activeZones.forEach(zoneId => {
+            const zoneEl = svg.getElementById(zoneId);
+            if (!zoneEl) return;
+            if (markedZoneIds.has(zoneId)) {
+                zoneEl.classList.remove('pz-zone-unmarked');
+                zoneEl.classList.add('pz-zone-marked');
+            } else {
+                zoneEl.classList.remove('pz-zone-marked');
+                zoneEl.classList.add('pz-zone-unmarked');
+            }
+        });
 
         // 2. Find highest intensity (> 0) per zone in current panel
         const maxIntensityByZone = new Map();
