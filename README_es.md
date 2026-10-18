@@ -70,12 +70,12 @@ Formulario de encuentro clínico para el mapeo anatómico interactivo de dolor e
 
 | Vista Principal y Mapa Anatómico | Modal de Registro de Marca |
 |:---:|:---:|
-| ![Mapa Anatómico con Zonas y Zoom](docs/screenshot_map.png) | ![Modal de Evaluación Clínica](docs/screenshot_modal.png) |
+| ![Mapa Anatómico con Zonas y Zoom](docs/pain_zone_1.png) | ![Modal de Evaluación Clínica](docs/pain_zone_3.png) |
 | *Mapa con zonas coloreadas, controles de zoom y escala horizontal.* | *Deslizador de intensidad, selector de cualidad y datos semiológicos.* |
 
 | Reporte del Encuentro |
 |:---:|
-| ![Reporte Tabular en el Encuentro](docs/screenshot_report.png) |
+| ![Reporte Tabular en el Encuentro](docs/pain_zone_5.png) |
 | *Detalle de zonas y marcas integrado en el historial del paciente.* |
 
 ---
