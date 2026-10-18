@@ -1,0 +1,386 @@
+-- ============================================================================
+-- lang_custom.sql - Spanish (Latin American Hospital) translations for pain_zones
+-- lang_code = 'el'  (Spanish Latin American in OpenEMR)
+-- lang_description = 'Spanish (Latin American)'
+--
+-- Self-contained: run this script directly after module installation.
+-- It populates lang_custom AND synchronizes into lang_languages /
+-- lang_constants / lang_definitions.
+-- No manual Administration > Language sync step is required.
+--
+-- Source UI strings are in English (xl/xlt/xla/xlj calls in PHP templates).
+-- This script provides Spanish (Latin American Hospital) translations.
+-- Existing translations are NOT overwritten (safe to re-run).
+-- ============================================================================
+
+START TRANSACTION;
+
+-- ============================================================================
+-- 1. Ensure the Spanish (Latin American) language record exists
+-- ============================================================================
+-- INSERT IGNORE INTO lang_languages (lang_code, lang_description)
+-- SELECT 'el', 'Spanish (Latin American)'
+-- WHERE NOT EXISTS (SELECT 1 FROM lang_languages WHERE lang_code = 'el');
+
+-- ============================================================================
+-- 2. Insert translations into lang_custom
+--    Existing entries are skipped (INSERT IGNORE).
+-- ============================================================================
+INSERT IGNORE INTO lang_custom (lang_description, lang_code, constant_name, definition) VALUES
+
+-- Form Title, Modes & Common Actions
+('Spanish (Latin American)', 'el', 'Pain Zones', 'Zonas de Dolor'),
+('Spanish (Latin American)', 'el', 'Edit Mode', 'Modo Edición'),
+('Spanish (Latin American)', 'el', 'Read Only', 'Solo Lectura'),
+('Spanish (Latin American)', 'el', 'Cancel', 'Cancelar'),
+('Spanish (Latin American)', 'el', 'Save', 'Guardar'),
+('Spanish (Latin American)', 'el', 'Close', 'Cerrar'),
+('Spanish (Latin American)', 'el', 'Confirm', 'Confirmar'),
+('Spanish (Latin American)', 'el', 'Edit', 'Editar'),
+('Spanish (Latin American)', 'el', 'Delete', 'Eliminar'),
+('Spanish (Latin American)', 'el', 'Error', 'Error'),
+
+-- Figure, Gender & Orientation
+('Spanish (Latin American)', 'el', 'Figure:', 'Figura:'),
+('Spanish (Latin American)', 'el', 'Figure', 'Figura'),
+('Spanish (Latin American)', 'el', 'Adult Male', 'Hombre Adulto'),
+('Spanish (Latin American)', 'el', 'Adult Female', 'Mujer Adulta'),
+('Spanish (Latin American)', 'el', 'Male', 'Masculino'),
+('Spanish (Latin American)', 'el', 'Female', 'Femenino'),
+('Spanish (Latin American)', 'el', 'View:', 'Vista:'),
+('Spanish (Latin American)', 'el', 'View', 'Vista'),
+('Spanish (Latin American)', 'el', 'Anterior', 'Anterior'),
+('Spanish (Latin American)', 'el', 'Posterior', 'Posterior'),
+('Spanish (Latin American)', 'el', 'Laterality', 'Lateralidad'),
+('Spanish (Latin American)', 'el', 'Left', 'Izquierda'),
+('Spanish (Latin American)', 'el', 'Right', 'Derecha'),
+('Spanish (Latin American)', 'el', 'Midline', 'Línea Media'),
+
+-- Anatomical Mapping & Workspace
+('Spanish (Latin American)', 'el', 'Anatomical Map', 'Mapa Anatómico'),
+('Spanish (Latin American)', 'el', 'Anatomical Zone: ', 'Zona Anatómica: '),
+('Spanish (Latin American)', 'el', 'Anatomical Zone:', 'Zona Anatómica:'),
+('Spanish (Latin American)', 'el', 'Anatomical Zone', 'Zona Anatómica'),
+('Spanish (Latin American)', 'el', 'Zone', 'Zona'),
+('Spanish (Latin American)', 'el', 'Click on an anatomical zone to add a mark', 'Haga clic en una zona anatómica para agregar una marca'),
+('Spanish (Latin American)', 'el', 'Click on a mark to view details', 'Haga clic en una marca para ver detalles'),
+('Spanish (Latin American)', 'el', 'Wheel: Zoom | Right-click: Pan | Left-click: Mark', 'Rueda: Zoom | Clic derecho: Mover | Clic izquierdo: Marcar'),
+('Spanish (Latin American)', 'el', 'Wheel: Zoom | Right-click: Pan | Left-click: View', 'Rueda: Zoom | Clic derecho: Mover | Clic izquierdo: Ver'),
+('Spanish (Latin American)', 'el', 'Zoom Controls', 'Controles de Zoom'),
+('Spanish (Latin American)', 'el', 'Zoom In', 'Acercar'),
+('Spanish (Latin American)', 'el', 'Zoom Out', 'Alejar'),
+('Spanish (Latin American)', 'el', 'Reset Zoom', 'Restablecer Zoom'),
+
+-- Mark List & Sidebar
+('Spanish (Latin American)', 'el', 'Pain Marks', 'Marcas de Dolor'),
+('Spanish (Latin American)', 'el', 'No marks recorded.', 'No hay marcas registradas.'),
+('Spanish (Latin American)', 'el', 'No pain marks recorded.', 'No se registraron marcas de dolor.'),
+('Spanish (Latin American)', 'el', 'Mark', 'Marca'),
+
+-- Mark Assessment Dialog (Modal)
+('Spanish (Latin American)', 'el', 'Add Pain Mark', 'Agregar Marca de Dolor'),
+('Spanish (Latin American)', 'el', 'Edit Pain Mark', 'Editar Marca de Dolor'),
+('Spanish (Latin American)', 'el', 'View Pain Mark', 'Ver Marca de Dolor'),
+('Spanish (Latin American)', 'el', 'Delete Mark', 'Eliminar Marca'),
+('Spanish (Latin American)', 'el', 'Pain Intensity (0 - 10):', 'Intensidad del Dolor (0 - 10):'),
+('Spanish (Latin American)', 'el', 'Pain Intensity (0 - 10)', 'Intensidad del Dolor (0 - 10)'),
+('Spanish (Latin American)', 'el', 'Intensity', 'Intensidad'),
+('Spanish (Latin American)', 'el', 'Band', 'Banda'),
+('Spanish (Latin American)', 'el', 'Pain Quality:', 'Cualidad del Dolor:'),
+('Spanish (Latin American)', 'el', 'Pain Quality', 'Cualidad del Dolor'),
+('Spanish (Latin American)', 'el', 'Quality', 'Cualidad'),
+('Spanish (Latin American)', 'el', '-- Select --', '-- Seleccionar --'),
+('Spanish (Latin American)', 'el', 'Sharp', 'Punzante'),
+('Spanish (Latin American)', 'el', 'Dull', 'Sordo'),
+('Spanish (Latin American)', 'el', 'Burning', 'Urente'),
+('Spanish (Latin American)', 'el', 'Throbbing', 'Pulsátil'),
+('Spanish (Latin American)', 'el', 'Stabbing', 'Lancinante'),
+('Spanish (Latin American)', 'el', 'Cramping', 'Cólico'),
+('Spanish (Latin American)', 'el', 'Pressing', 'Opresivo'),
+('Spanish (Latin American)', 'el', 'Shooting', 'Fulgurante'),
+('Spanish (Latin American)', 'el', 'Aching', 'Constante'),
+('Spanish (Latin American)', 'el', 'Electric', 'Eléctrico'),
+('Spanish (Latin American)', 'el', 'Tingling', 'Hormigueo'),
+('Spanish (Latin American)', 'el', 'Heavy', 'Pesadez'),
+('Spanish (Latin American)', 'el', 'Other', 'Otro'),
+('Spanish (Latin American)', 'el', 'Specify other pain quality', 'Especifique otra cualidad del dolor'),
+('Spanish (Latin American)', 'el', 'e.g. Sharp, dull, burning', 'ej. Punzante, sordo, urente'),
+('Spanish (Latin American)', 'el', 'Radiation:', 'Irradiación:'),
+('Spanish (Latin American)', 'el', 'Radiation', 'Irradiación'),
+('Spanish (Latin American)', 'el', 'e.g. Radiates to leg', 'ej. Irradia a la pierna'),
+('Spanish (Latin American)', 'el', 'Onset:', 'Inicio:'),
+('Spanish (Latin American)', 'el', 'Onset', 'Inicio'),
+('Spanish (Latin American)', 'el', 'e.g. 2 days ago', 'ej. Hace 2 días'),
+('Spanish (Latin American)', 'el', 'Duration:', 'Duración:'),
+('Spanish (Latin American)', 'el', 'Duration', 'Duración'),
+('Spanish (Latin American)', 'el', 'e.g. Intermittent, 1 hour', 'ej. Intermitente, 1 hora'),
+('Spanish (Latin American)', 'el', 'Aggravating Factors:', 'Factores Agravantes:'),
+('Spanish (Latin American)', 'el', 'Aggravating', 'Agravantes'),
+('Spanish (Latin American)', 'el', 'e.g. Walking, flexion', 'ej. Al caminar, flexión'),
+('Spanish (Latin American)', 'el', 'Relieving Factors:', 'Factores Atenuantes:'),
+('Spanish (Latin American)', 'el', 'Relieving', 'Atenuantes'),
+('Spanish (Latin American)', 'el', 'e.g. Rest, ice', 'ej. Reposo, hielo'),
+('Spanish (Latin American)', 'el', 'Mark Notes:', 'Notas de la Marca:'),
+('Spanish (Latin American)', 'el', 'Mark Notes', 'Notas de la Marca'),
+('Spanish (Latin American)', 'el', 'Specific notes for this zone', 'Notas específicas para esta zona'),
+('Spanish (Latin American)', 'el', 'General Notes:', 'Notas Generales:'),
+('Spanish (Latin American)', 'el', 'General Notes', 'Notas Generales'),
+('Spanish (Latin American)', 'el', 'Notes', 'Notas'),
+('Spanish (Latin American)', 'el', 'Intensity: ', 'Intensidad: '),
+('Spanish (Latin American)', 'el', 'Radiation: ', 'Irradiación: '),
+('Spanish (Latin American)', 'el', 'Onset: ', 'Inicio: '),
+('Spanish (Latin American)', 'el', 'Duration: ', 'Duración: '),
+('Spanish (Latin American)', 'el', 'Aggravating: ', 'Agravantes: '),
+('Spanish (Latin American)', 'el', 'Relieving: ', 'Atenuantes: '),
+('Spanish (Latin American)', 'el', 'Note: ', 'Nota: '),
+
+-- Clinical Severity Bands & Levels (NRS 0 - 10)
+('Spanish (Latin American)', 'el', 'None', 'Ninguno'),
+('Spanish (Latin American)', 'el', 'Mild', 'Leve'),
+('Spanish (Latin American)', 'el', 'Moderate', 'Moderado'),
+('Spanish (Latin American)', 'el', 'Severe', 'Severo'),
+('Spanish (Latin American)', 'el', 'Pain Zones Level', 'Nivel de Zonas de Dolor'),
+('Spanish (Latin American)', 'el', 'Level 0', 'Nivel 0'),
+('Spanish (Latin American)', 'el', 'Level 1', 'Nivel 1'),
+('Spanish (Latin American)', 'el', 'Level 2', 'Nivel 2'),
+('Spanish (Latin American)', 'el', 'Level 3', 'Nivel 3'),
+('Spanish (Latin American)', 'el', 'Level 4', 'Nivel 4'),
+('Spanish (Latin American)', 'el', 'Level 5', 'Nivel 5'),
+('Spanish (Latin American)', 'el', 'Level 6', 'Nivel 6'),
+('Spanish (Latin American)', 'el', 'Level 7', 'Nivel 7'),
+('Spanish (Latin American)', 'el', 'Level 8', 'Nivel 8'),
+('Spanish (Latin American)', 'el', 'Level 9', 'Nivel 9'),
+('Spanish (Latin American)', 'el', 'Level 10', 'Nivel 10'),
+('Spanish (Latin American)', 'el', 'Little pain', 'Poco dolor'),
+('Spanish (Latin American)', 'el', 'Extreme pain', 'Dolor extremo'),
+('Spanish (Latin American)', 'el', 'Pain Scale (0 - 10)', 'Escala de Dolor (0 - 10)'),
+('Spanish (Latin American)', 'el', '0: No pain', '0: Sin dolor'),
+('Spanish (Latin American)', 'el', '1: Mild pain', '1: Dolor leve'),
+('Spanish (Latin American)', 'el', '2: Mild pain', '2: Dolor leve'),
+('Spanish (Latin American)', 'el', '3: Mild pain', '3: Dolor leve'),
+('Spanish (Latin American)', 'el', '4: Moderate pain', '4: Dolor moderado'),
+('Spanish (Latin American)', 'el', '5: Moderate pain', '5: Dolor moderado'),
+('Spanish (Latin American)', 'el', '6: Moderate pain', '6: Dolor moderado'),
+('Spanish (Latin American)', 'el', '7: Severe pain', '7: Dolor severo'),
+('Spanish (Latin American)', 'el', '8: Severe pain', '8: Dolor severo'),
+('Spanish (Latin American)', 'el', '9: Severe pain', '9: Dolor severo'),
+('Spanish (Latin American)', 'el', '10: Extreme pain', '10: Dolor extremo'),
+
+-- User Confirmations, Warnings & Client Prompts
+('Spanish (Latin American)', 'el', 'Are you sure you want to delete this mark?', '¿Está seguro de que desea eliminar esta marca?'),
+('Spanish (Latin American)', 'el', 'Are you sure you want to delete this pain mark?', '¿Está seguro de que desea eliminar esta marca de dolor?'),
+('Spanish (Latin American)', 'el', 'You have unsaved changes. Are you sure you want to exit?', 'Tiene cambios sin guardar. ¿Está seguro de que desea salir?'),
+('Spanish (Latin American)', 'el', 'A network error occurred while saving.', 'Ocurrió un error de red al guardar.'),
+('Spanish (Latin American)', 'el', 'An error occurred while saving.', 'Ocurrió un error al guardar.'),
+('Spanish (Latin American)', 'el', 'Server returned an invalid response. Please try again.', 'El servidor devolvió una respuesta no válida. Por favor intente nuevamente.'),
+('Spanish (Latin American)', 'el', 'An error occurred while saving. Please try again or contact your administrator.', 'Ocurrió un error al guardar. Por favor intente nuevamente o contacte al administrador.'),
+
+-- Backend Validation & Security Messages
+('Spanish (Latin American)', 'el', 'Authentication error: CSRF token invalid or missing.', 'Error de autenticación: Token CSRF no válido o ausente.'),
+('Spanish (Latin American)', 'el', 'Access denied: insufficient permissions.', 'Acceso denegado: permisos insuficientes.'),
+('Spanish (Latin American)', 'el', 'No patient selected in session.', 'No hay ningún paciente seleccionado en la sesión.'),
+('Spanish (Latin American)', 'el', 'No active encounter in session. Please open an encounter before saving.', 'No hay una consulta activa en la sesión. Abra una consulta antes de guardar.'),
+('Spanish (Latin American)', 'el', 'A valid form id is required for update.', 'Se requiere un id de formulario válido para actualizar.'),
+('Spanish (Latin American)', 'el', 'Invalid request mode.', 'Modo de solicitud no válido.'),
+('Spanish (Latin American)', 'el', 'Invalid marks payload: must be a JSON array (list).', 'Carga de marcas no válida: debe ser una lista JSON.'),
+('Spanish (Latin American)', 'el', 'each mark must be a JSON object.', 'cada marca debe ser un objeto JSON.'),
+('Spanish (Latin American)', 'el', 'Too many marks in a single submission (maximum %d).', 'Demasiadas marcas en un solo envío (máximo %d).'),
+('Spanish (Latin American)', 'el', 'Duplicate db_id in payload', 'db_id duplicado en la carga'),
+('Spanish (Latin American)', 'el', 'not found or already deleted.', 'no encontrado o ya eliminado.'),
+
+-- Anatomical Regions & Zones (Clinical Hospital Spanish)
+('Spanish (Latin American)', 'el', 'Head', 'Cabeza'),
+('Spanish (Latin American)', 'el', 'Neck', 'Cuello'),
+('Spanish (Latin American)', 'el', 'Chest', 'Tórax'),
+('Spanish (Latin American)', 'el', 'Abdomen', 'Abdomen'),
+('Spanish (Latin American)', 'el', 'Pelvis', 'Pelvis'),
+('Spanish (Latin American)', 'el', 'Spine', 'Columna Vertebral'),
+('Spanish (Latin American)', 'el', 'Shoulder', 'Hombro'),
+('Spanish (Latin American)', 'el', 'Clavicle', 'Clavícula'),
+('Spanish (Latin American)', 'el', 'Upper Arm', 'Brazo'),
+('Spanish (Latin American)', 'el', 'Elbow', 'Codo'),
+('Spanish (Latin American)', 'el', 'Forearm', 'Antebrazo'),
+('Spanish (Latin American)', 'el', 'Wrist', 'Muñeca'),
+('Spanish (Latin American)', 'el', 'Hand', 'Mano'),
+('Spanish (Latin American)', 'el', 'Hip', 'Cadera'),
+('Spanish (Latin American)', 'el', 'Thigh', 'Muslo'),
+('Spanish (Latin American)', 'el', 'Knee', 'Rodilla'),
+('Spanish (Latin American)', 'el', 'Lower Leg', 'Pierna'),
+('Spanish (Latin American)', 'el', 'Ankle', 'Tobillo'),
+('Spanish (Latin American)', 'el', 'Foot', 'Pie'),
+('Spanish (Latin American)', 'el', 'Back', 'Espalda'),
+('Spanish (Latin American)', 'el', 'Buttock', 'Glúteo'),
+('Spanish (Latin American)', 'el', 'Genitals', 'Genitales'),
+('Spanish (Latin American)', 'el', 'Perineum', 'Periné'),
+('Spanish (Latin American)', 'el', 'Epigastric', 'Epigastrio'),
+('Spanish (Latin American)', 'el', 'Umbilical', 'Región Umbilical'),
+('Spanish (Latin American)', 'el', 'Suprapubic', 'Región Suprapúbica'),
+('Spanish (Latin American)', 'el', 'Lumbar', 'Lumbar'),
+('Spanish (Latin American)', 'el', 'Thoracic', 'Torácico'),
+('Spanish (Latin American)', 'el', 'Cervical', 'Cervical'),
+('Spanish (Latin American)', 'el', 'Sacral', 'Sacro'),
+('Spanish (Latin American)', 'el', 'Flank', 'Flanco'),
+('Spanish (Latin American)', 'el', 'Hypochondriac', 'Hipocondrio'),
+
+-- Specific Anatomical Zones (Generated via xl(ucwords(str_replace('_', ' ', $zoneId))))
+('Spanish (Latin American)', 'el', 'Abdomen Epigastric', 'Epigastrio'),
+('Spanish (Latin American)', 'el', 'Abdomen Flank Left', 'Flanco Izquierdo'),
+('Spanish (Latin American)', 'el', 'Abdomen Flank Right', 'Flanco Derecho'),
+('Spanish (Latin American)', 'el', 'Abdomen Hypochondriac Left', 'Hipocondrio Izquierdo'),
+('Spanish (Latin American)', 'el', 'Abdomen Hypochondriac Right', 'Hipocondrio Derecho'),
+('Spanish (Latin American)', 'el', 'Abdomen Iliac Left', 'Fosa Ilíaca Izquierda'),
+('Spanish (Latin American)', 'el', 'Abdomen Iliac Right', 'Fosa Ilíaca Derecha'),
+('Spanish (Latin American)', 'el', 'Abdomen Suprapubic', 'Región Suprapúbica'),
+('Spanish (Latin American)', 'el', 'Abdomen Umbilical', 'Región Umbilical'),
+('Spanish (Latin American)', 'el', 'Ankle Achilles Left', 'Tendón de Aquiles Izquierdo'),
+('Spanish (Latin American)', 'el', 'Ankle Achilles Right', 'Tendón de Aquiles Derecho'),
+('Spanish (Latin American)', 'el', 'Ankle Anterior Left', 'Tobillo Anterior Izquierdo'),
+('Spanish (Latin American)', 'el', 'Ankle Anterior Right', 'Tobillo Anterior Derecho'),
+('Spanish (Latin American)', 'el', 'Back Iliac Crest Left', 'Cresta Ilíaca Izquierda'),
+('Spanish (Latin American)', 'el', 'Back Iliac Crest Right', 'Cresta Ilíaca Derecha'),
+('Spanish (Latin American)', 'el', 'Back Interscapular', 'Región Interescapular'),
+('Spanish (Latin American)', 'el', 'Back Lumbar Left', 'Región Lumbar Izquierda'),
+('Spanish (Latin American)', 'el', 'Back Lumbar Right', 'Región Lumbar Derecha'),
+('Spanish (Latin American)', 'el', 'Back Sacrum', 'Región Sacra'),
+('Spanish (Latin American)', 'el', 'Back Scapula Left', 'Escápula Izquierda'),
+('Spanish (Latin American)', 'el', 'Back Scapula Right', 'Escápula Derecha'),
+('Spanish (Latin American)', 'el', 'Back Thoracic Left', 'Dorsal / Torácica Izquierda'),
+('Spanish (Latin American)', 'el', 'Back Thoracic Right', 'Dorsal / Torácica Derecha'),
+('Spanish (Latin American)', 'el', 'Back Trapezius Left', 'Trapecio Izquierdo'),
+('Spanish (Latin American)', 'el', 'Back Trapezius Right', 'Trapecio Derecho'),
+('Spanish (Latin American)', 'el', 'Buttock Left', 'Glúteo Izquierdo'),
+('Spanish (Latin American)', 'el', 'Buttock Right', 'Glúteo Derecho'),
+('Spanish (Latin American)', 'el', 'Chest Axilla Left', 'Axila Izquierda'),
+('Spanish (Latin American)', 'el', 'Chest Axilla Right', 'Axila Derecha'),
+('Spanish (Latin American)', 'el', 'Chest Breast Left', 'Mama Izquierda'),
+('Spanish (Latin American)', 'el', 'Chest Breast Right', 'Mama Derecha'),
+('Spanish (Latin American)', 'el', 'Chest Pectoral Left', 'Pectoral Izquierdo'),
+('Spanish (Latin American)', 'el', 'Chest Pectoral Right', 'Pectoral Derecho'),
+('Spanish (Latin American)', 'el', 'Chest Rib Left', 'Parrilla Costal Izquierda'),
+('Spanish (Latin American)', 'el', 'Chest Rib Right', 'Parrilla Costal Derecha'),
+('Spanish (Latin American)', 'el', 'Chest Sternum', 'Esternón'),
+('Spanish (Latin American)', 'el', 'Clavicle Left', 'Clavícula Izquierda'),
+('Spanish (Latin American)', 'el', 'Clavicle Right', 'Clavícula Derecha'),
+('Spanish (Latin American)', 'el', 'Elbow Antecubital Left', 'Fosa Antecubital Izquierda'),
+('Spanish (Latin American)', 'el', 'Elbow Antecubital Right', 'Fosa Antecubital Derecha'),
+('Spanish (Latin American)', 'el', 'Elbow Olecranon Left', 'Codo Posterior / Olécranon Izquierdo'),
+('Spanish (Latin American)', 'el', 'Elbow Olecranon Right', 'Codo Posterior / Olécranon Derecho'),
+('Spanish (Latin American)', 'el', 'Foot Dorsum Left', 'Dorso del Pie Izquierdo'),
+('Spanish (Latin American)', 'el', 'Foot Dorsum Right', 'Dorso del Pie Derecho'),
+('Spanish (Latin American)', 'el', 'Foot Heel Left', 'Talón Izquierdo'),
+('Spanish (Latin American)', 'el', 'Foot Heel Right', 'Talón Derecho'),
+('Spanish (Latin American)', 'el', 'Foot Toes Left', 'Dedos del Pie Izquierdo'),
+('Spanish (Latin American)', 'el', 'Foot Toes Right', 'Dedos del Pie Derecho'),
+('Spanish (Latin American)', 'el', 'Forearm Anterior Left', 'Antebrazo Anterior Izquierdo'),
+('Spanish (Latin American)', 'el', 'Forearm Anterior Right', 'Antebrazo Anterior Derecho'),
+('Spanish (Latin American)', 'el', 'Forearm Posterior Left', 'Antebrazo Posterior Izquierdo'),
+('Spanish (Latin American)', 'el', 'Forearm Posterior Right', 'Antebrazo Posterior Derecho'),
+('Spanish (Latin American)', 'el', 'Genitals', 'Genitales'),
+('Spanish (Latin American)', 'el', 'Genitals Penis', 'Pene'),
+('Spanish (Latin American)', 'el', 'Genitals Testicle Left', 'Testículo Izquierdo'),
+('Spanish (Latin American)', 'el', 'Genitals Testicle Right', 'Testículo Derecho'),
+('Spanish (Latin American)', 'el', 'Hand Dorsum Left', 'Dorso de la Mano Izquierda'),
+('Spanish (Latin American)', 'el', 'Hand Dorsum Right', 'Dorso de la Mano Derecha'),
+('Spanish (Latin American)', 'el', 'Hand Fingers Left', 'Dedos de la Mano Izquierda'),
+('Spanish (Latin American)', 'el', 'Hand Fingers Right', 'Dedos de la Mano Derecha'),
+('Spanish (Latin American)', 'el', 'Hand Palm Left', 'Palma de la Mano Izquierda'),
+('Spanish (Latin American)', 'el', 'Hand Palm Right', 'Palma de la Mano Derecha'),
+('Spanish (Latin American)', 'el', 'Head Ear Left', 'Oreja Izquierda'),
+('Spanish (Latin American)', 'el', 'Head Ear Right', 'Oreja Derecha'),
+('Spanish (Latin American)', 'el', 'Head Eye Left', 'Ojo Izquierdo'),
+('Spanish (Latin American)', 'el', 'Head Eye Right', 'Ojo Derecho'),
+('Spanish (Latin American)', 'el', 'Head Eyebrow Left', 'Ceja Izquierda'),
+('Spanish (Latin American)', 'el', 'Head Eyebrow Right', 'Ceja Derecha'),
+('Spanish (Latin American)', 'el', 'Head Face Left', 'Cara Izquierda'),
+('Spanish (Latin American)', 'el', 'Head Face Right', 'Cara Derecha'),
+('Spanish (Latin American)', 'el', 'Head Forehead Left', 'Frente Izquierda'),
+('Spanish (Latin American)', 'el', 'Head Forehead Right', 'Frente Derecha'),
+('Spanish (Latin American)', 'el', 'Head Jaw', 'Mandíbula'),
+('Spanish (Latin American)', 'el', 'Head Mouth', 'Boca'),
+('Spanish (Latin American)', 'el', 'Head Nose', 'Nariz'),
+('Spanish (Latin American)', 'el', 'Head Occipital', 'Región Occipital'),
+('Spanish (Latin American)', 'el', 'Head Parietal Left', 'Región Parietal Izquierda'),
+('Spanish (Latin American)', 'el', 'Head Parietal Right', 'Región Parietal Derecha'),
+('Spanish (Latin American)', 'el', 'Head Temple Left', 'Sien Izquierda'),
+('Spanish (Latin American)', 'el', 'Head Temple Right', 'Sien Derecha'),
+('Spanish (Latin American)', 'el', 'Hip Lateral Left', 'Cadera Lateral Izquierda'),
+('Spanish (Latin American)', 'el', 'Hip Lateral Right', 'Cadera Lateral Derecha'),
+('Spanish (Latin American)', 'el', 'Knee Patella Left', 'Rodilla Anterior / Rótula Izquierda'),
+('Spanish (Latin American)', 'el', 'Knee Patella Right', 'Rodilla Anterior / Rótula Derecha'),
+('Spanish (Latin American)', 'el', 'Knee Popliteal Left', 'Fosa Poplítea Izquierda'),
+('Spanish (Latin American)', 'el', 'Knee Popliteal Right', 'Fosa Poplítea Derecha'),
+('Spanish (Latin American)', 'el', 'Lower Leg Anterior Left', 'Pierna Anterior Izquierda'),
+('Spanish (Latin American)', 'el', 'Lower Leg Anterior Right', 'Pierna Anterior Derecha'),
+('Spanish (Latin American)', 'el', 'Lower Leg Posterior Left', 'Pantorrilla / Pierna Posterior Izquierda'),
+('Spanish (Latin American)', 'el', 'Lower Leg Posterior Right', 'Pantorrilla / Pierna Posterior Derecha'),
+('Spanish (Latin American)', 'el', 'Neck Anterior', 'Cuello Anterior'),
+('Spanish (Latin American)', 'el', 'Neck Lateral Left', 'Cuello Lateral Izquierdo'),
+('Spanish (Latin American)', 'el', 'Neck Lateral Right', 'Cuello Lateral Derecho'),
+('Spanish (Latin American)', 'el', 'Neck Posterior', 'Cuello Posterior / Nuca'),
+('Spanish (Latin American)', 'el', 'Pelvis Groin Left', 'Ingle Izquierda'),
+('Spanish (Latin American)', 'el', 'Pelvis Groin Right', 'Ingle Derecha'),
+('Spanish (Latin American)', 'el', 'Pelvis Pubic', 'Región Púbica'),
+('Spanish (Latin American)', 'el', 'Perineum', 'Periné'),
+('Spanish (Latin American)', 'el', 'Shoulder Anterior Left', 'Hombro Anterior Izquierdo'),
+('Spanish (Latin American)', 'el', 'Shoulder Anterior Right', 'Hombro Anterior Derecho'),
+('Spanish (Latin American)', 'el', 'Shoulder Posterior Left', 'Hombro Posterior Izquierdo'),
+('Spanish (Latin American)', 'el', 'Shoulder Posterior Right', 'Hombro Posterior Derecho'),
+('Spanish (Latin American)', 'el', 'Spine Cervical', 'Columna Cervical'),
+('Spanish (Latin American)', 'el', 'Spine Coccyx', 'Cóccix'),
+('Spanish (Latin American)', 'el', 'Spine Lumbar', 'Columna Lumbar'),
+('Spanish (Latin American)', 'el', 'Spine Sacral', 'Columna Sacra'),
+('Spanish (Latin American)', 'el', 'Spine Thoracic', 'Columna Dorsal / Torácica'),
+('Spanish (Latin American)', 'el', 'Thigh Anterior Left', 'Muslo Anterior Izquierdo'),
+('Spanish (Latin American)', 'el', 'Thigh Anterior Right', 'Muslo Anterior Derecho'),
+('Spanish (Latin American)', 'el', 'Thigh Posterior Left', 'Muslo Posterior Izquierdo'),
+('Spanish (Latin American)', 'el', 'Thigh Posterior Right', 'Muslo Posterior Derecho'),
+('Spanish (Latin American)', 'el', 'Upper Arm Anterior Left', 'Brazo Anterior Izquierdo'),
+('Spanish (Latin American)', 'el', 'Upper Arm Anterior Right', 'Brazo Anterior Derecho'),
+('Spanish (Latin American)', 'el', 'Upper Arm Posterior Left', 'Brazo Posterior Izquierdo'),
+('Spanish (Latin American)', 'el', 'Upper Arm Posterior Right', 'Brazo Posterior Derecho'),
+('Spanish (Latin American)', 'el', 'Wrist Anterior Left', 'Muñeca Anterior Izquierda'),
+('Spanish (Latin American)', 'el', 'Wrist Anterior Right', 'Muñeca Anterior Derecha'),
+('Spanish (Latin American)', 'el', 'Wrist Posterior Left', 'Muñeca Posterior Izquierda'),
+('Spanish (Latin American)', 'el', 'Wrist Posterior Right', 'Muñeca Posterior Derecha')
+;
+
+-- ============================================================================
+-- 3. Synchronize lang_custom into lang_constants (add missing source strings)
+-- ============================================================================
+INSERT IGNORE INTO lang_constants (constant_name)
+SELECT DISTINCT CONVERT(lc.constant_name USING utf8mb4)
+FROM lang_custom lc
+WHERE lc.constant_name <> ''
+  AND NOT EXISTS (
+    SELECT 1 FROM lang_constants c
+    WHERE c.constant_name = CONVERT(lc.constant_name USING utf8mb4)
+  );
+
+-- ============================================================================
+-- 4. Insert new definitions (skip if already exists)
+-- ============================================================================
+INSERT IGNORE INTO lang_definitions (cons_id, lang_id, definition)
+SELECT c.cons_id, l.lang_id, lc.definition
+FROM lang_custom lc
+INNER JOIN lang_constants c
+    ON c.constant_name = CONVERT(lc.constant_name USING utf8mb4)
+INNER JOIN lang_languages l
+    ON l.lang_code = lc.lang_code
+WHERE NOT EXISTS (
+    SELECT 1 FROM lang_definitions d
+    WHERE d.cons_id = c.cons_id AND d.lang_id = l.lang_id
+);
+
+-- ============================================================================
+-- 5. Update definitions that changed since last run
+-- ============================================================================
+UPDATE lang_definitions d
+INNER JOIN lang_constants c ON c.cons_id = d.cons_id
+INNER JOIN lang_languages l ON l.lang_id = d.lang_id
+INNER JOIN lang_custom lc
+    ON l.lang_code = lc.lang_code
+    AND c.constant_name = CONVERT(lc.constant_name USING utf8mb4)
+SET d.definition = lc.definition
+WHERE IFNULL(d.definition, '') <> IFNULL(lc.definition, '');
+
+COMMIT;
