@@ -66,8 +66,6 @@ Formulario de encuentro clínico para el mapeo anatómico interactivo de dolor e
 
 ## 📸 Capturas de Pantalla
 
-> *(Coloque las imágenes correspondientes en la carpeta `docs/` o `assets/` para visualizarlas en el repositorio)*
-
 | Vista Principal y Mapa Anatómico | Modal de Registro de Marca |
 |:---:|:---:|
 | ![Mapa Anatómico con Zonas y Zoom](docs/pain_zone_1.png) | ![Modal de Evaluación Clínica](docs/pain_zone_3.png) |
