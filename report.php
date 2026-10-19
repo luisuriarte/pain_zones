@@ -115,7 +115,7 @@ function pain_zones_report($pid, $encounter, $cols, $id): void
 
             $clinicalParts = [];
             if (!empty($mark['pain_quality'])) {
-                $clinicalParts[] = '<strong>' . xlt('Quality') . ':</strong> ' . xlt((string)$mark['pain_quality']);
+                $clinicalParts[] = '<strong>' . xlt('Quality') . ':</strong> ' . text(pz_qualityLabel((string)$mark['pain_quality']));
             }
             if (!empty($mark['radiation'])) {
                 $clinicalParts[] = '<strong>' . xlt('Radiation') . ':</strong> ' . text((string)$mark['radiation']);

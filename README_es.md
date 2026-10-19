@@ -62,6 +62,12 @@ Formulario de encuentro clínico para el mapeo anatómico interactivo de dolor e
   - Panel lateral que lista todas las marcas del encuentro a lo largo de las 4 vistas corporales.
   - Navegación directa: hacer clic en una tarjeta del listado cambia automáticamente a la figura y vista correspondiente.
 
+- 🧾 **Resumen Clínico Editable (`summary_text`):**
+  - Debajo de Notas Generales hay un cuadro **Texto del Resumen**. Al confirmar o eliminar una marca se rellena automáticamente a partir de las marcas actuales y las notas generales, con una plantilla fija y determinista (sin IA, sin generación libre).
+  - Un renglón por marca ordenado por intensidad descendente: zona anatómica traducida con su lateralidad, banda de severidad y `N/10`, y luego solo los campos semiológicos con valor (cualidad, irradiación, inicio, duración, agravantes, atenuantes, notas). Las notas generales se agregan como renglón final; si no hay marcas se muestra una frase fija traducible.
+  - El clínico puede corregir el texto antes de guardar y ese texto revisado se persiste con el formulario. El enlace **Regenerar** lo reconstruye desde las marcas actuales. Si el campo no llega (cliente antiguo), el servidor lo regenera dentro de la transacción de guardado.
+  - Se guarda como texto plano (nunca HTML) y sirve de contexto para la nota SOAP.
+
 ---
 
 ## 📸 Capturas de Pantalla
@@ -84,7 +90,7 @@ El módulo utiliza tres tablas relacionales y dos listas en `list_options` (`tab
 
 1. **`form_pain_zones` (Cabecera del Formulario):**
    - Vincula el encuentro médico (`id`, `date`, `pid`, `user`, `groupname`, `authorized`, `activity`).
-   - Almacena notas generales del formulario (`general_notes`, hasta 5.000 caracteres) y resumen clínico (`summary_text`).
+   - Almacena notas generales del formulario (`general_notes`, hasta 5.000 caracteres) y el resumen editable en texto plano `summary_text` (autocompletado desde las marcas y revisable antes de guardar, con regeneración del servidor como respaldo; ver `pz_buildSummary()` en `pain_zones.inc.php`).
 
 2. **`form_pain_zones_marks` (Marcas de Dolor):**
    - Almacena cada punto marcado en el cuerpo: `figure`, `body_view`, `zone_id`, `laterality`, `x_pct`, `y_pct`, `intensity` (0 a 10), `pain_quality`, `radiation`, `onset`, `duration`, `aggravating`, `relieving`, `notes` y estado de actividad (`activity = 1`, o `0` para bajas lógicas).
@@ -180,13 +186,15 @@ mysql -u openemr -p openemr < /var/www/html/openemr/interface/forms/pain_zones/l
 2. **Navegación y Zoom:** Utilice la rueda del ratón o los botones flotantes para acercar la región de interés. Arrastre con el botón derecho para desplazar la figura.
 3. **Marcar Dolor:** Haga clic izquierdo sobre la zona corporal. Se abrirá el modal para registrar la intensidad (0 a 10), cualidad, irradiación y factores asociados.
 4. **Editar o Eliminar:** Haga clic sobre un pin circular en el mapa o use el listado lateral para modificar o eliminar una marca.
-5. **Guardar:** Haga clic en **Guardar Formulario**. Los cambios se graban en una sola transacción en la base de datos y la pestaña se cierra actualizando el encuentro.
+5. **Revisar y Guardar:** Al confirmar cada marca se rellena el cuadro editable **Texto del Resumen**; corríjalo si hace falta (o pulse **Regenerar**). Al hacer clic en **Guardar Formulario** se persisten las marcas y el resumen revisado en una sola transacción, y la pestaña se cierra actualizando el encuentro.
 
 ---
 
 ## 🖨️ Reportes del Encuentro
 
 El archivo `report.php` define la función `pain_zones_report()`. Genera una tabla HTML limpia con el detalle de las marcas (zona, lateralidad, intensidad, cualidad, notas), la cual OpenEMR integra de forma estándar en el historial del encuentro y en el resumen imprimible de la consulta médica.
+
+Por otro lado, el resumen clínico editable en texto plano almacenado en `summary_text` (autocompletado por el formulario, con `pz_buildSummary()` del servidor como respaldo) ofrece un digesto compacto y legible de las marcas, pensado como contexto para la nota SOAP. No es lo mismo que el reporte tabular.
 
 ---
 

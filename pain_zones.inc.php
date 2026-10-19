@@ -65,6 +65,7 @@ const PZ_TEXT_MAX = [
     'relieving'     => 255,
     'notes'         => 5000,
     'general_notes' => 5000,
+    'summary_text'  => 1000000,
 ];
 
 // ---------------------------------------------------------------------------
@@ -313,6 +314,34 @@ function pz_getPainQualityOptions(): array
 
     $cache = $options;
     return $cache;
+}
+
+/**
+ * Resolve a stored pain-quality value to its translated display label.
+ *
+ * Marks store either an option_id from `pain_zones_quality` (e.g. 'throbbing')
+ * or free text typed for "Other". Option ids are mapped to their translated
+ * title; free text is returned unchanged.
+ *
+ * NOTE: requires DB access (list_options, cached). Do not call from the pure
+ * summary builder; resolve the values before calling pz_buildSummary().
+ *
+ * @param string $quality Stored option_id or custom text.
+ * @return string Translated, human-readable quality label.
+ */
+function pz_qualityLabel(string $quality): string
+{
+    $quality = trim($quality);
+    if ($quality === '') {
+        return '';
+    }
+
+    $options = pz_getPainQualityOptions();
+    if (isset($options[$quality])) {
+        return xl($options[$quality]);
+    }
+
+    return $quality;
 }
 
 // ---------------------------------------------------------------------------

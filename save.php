@@ -188,6 +188,27 @@ if (!$notesResult['ok']) {
 $generalNotes = $notesResult['value'];
 
 // ---------------------------------------------------------------------------
+// 8b. Validate and sanitize summary_text.
+//     The client sends an editable preview; when it is absent (legacy client)
+//     it is regenerated from the marks in the save transaction instead.
+// ---------------------------------------------------------------------------
+
+$summaryProvided = array_key_exists('summary_text', $_POST);
+$rawSummary      = filter_input(INPUT_POST, 'summary_text', FILTER_UNSAFE_RAW, FILTER_REQUIRE_SCALAR);
+if ($summaryProvided && $rawSummary === false) {
+    pz_jsonError('summary_text: must be a string');
+}
+$summaryResult   = pz_sanitizeText(
+    ($rawSummary === null || $rawSummary === '') ? null : (string)$rawSummary,
+    PZ_TEXT_MAX['summary_text'],
+    'summary_text'
+);
+if (!$summaryResult['ok']) {
+    pz_jsonError($summaryResult['error']);
+}
+$summaryText = $summaryResult['value'];
+
+// ---------------------------------------------------------------------------
 // 9. Validate all marks (must all pass before touching the DB)
 // ---------------------------------------------------------------------------
 
@@ -431,11 +452,19 @@ try {
         );
         $activeMarks = [];
         while ($row = sqlFetchArray($activeRes)) {
+            // Marks store the option_id (e.g. 'throbbing'); the summary needs
+            // the translated human label (pz_buildSummary stays DB-free).
+            $row['pain_quality'] = pz_qualityLabel((string)($row['pain_quality'] ?? ''));
             $activeMarks[] = $row;
         }
+        // Prefer the clinician-reviewed text from the form; regenerate only as
+        // a fallback when the client did not send the field.
+        $finalSummary = $summaryProvided
+            ? $summaryText
+            : pz_buildSummary($activeMarks, $generalNotes);
         sqlStatement(
             "UPDATE form_pain_zones SET summary_text = ? WHERE id = ? AND pid = ?",
-            [pz_buildSummary($activeMarks, $generalNotes), $formId, $pid]
+            [$finalSummary, $formId, $pid]
         );
     });
 

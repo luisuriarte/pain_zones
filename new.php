@@ -52,6 +52,7 @@ $session = SessionWrapperFactory::getInstance()->getActiveSession();
 $pid     = PatientSessionUtil::getPid();
 
 $generalNotes  = '';
+$summaryText   = '';
 $existingMarks = [];
 
 if ($formId > 0) {
@@ -59,7 +60,7 @@ if ($formId > 0) {
     pz_assertFormBelongsToSessionPatient($formId, 'pain_zones');
 
     $headerRow = QueryUtils::fetchRecords(
-        "SELECT id, general_notes FROM form_pain_zones WHERE id = ? AND pid = ? AND activity = 1",
+        "SELECT id, general_notes, summary_text FROM form_pain_zones WHERE id = ? AND pid = ? AND activity = 1",
         [$formId, $pid]
     );
 
@@ -68,6 +69,7 @@ if ($formId > 0) {
     }
 
     $generalNotes  = (string)($headerRow[0]['general_notes'] ?? '');
+    $summaryText   = (string)($headerRow[0]['summary_text'] ?? '');
     $existingMarks = QueryUtils::fetchRecords(
         "SELECT id, figure, body_view, zone_id, laterality, x_pct, y_pct,
                 intensity, pain_quality, radiation, onset, duration,
@@ -546,6 +548,14 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
                 <div class="card-footer bg-white p-3 border-top">
                     <label for="pz-general-notes" class="font-weight-bold small mb-1"><?php echo xlt('General Notes:'); ?></label>
                     <textarea id="pz-general-notes" name="general_notes" class="form-control" rows="3"<?php echo !$canWrite ? ' readonly' : ''; ?>><?php echo text($generalNotes); ?></textarea>
+
+                    <div class="d-flex justify-content-between align-items-center mt-2 mb-1">
+                        <label for="pz-summary-text" class="font-weight-bold small mb-0"><?php echo xlt('Summary Text:'); ?></label>
+                        <?php if ($canWrite): ?>
+                        <button type="button" id="pz-summary-regenerate" class="btn btn-link btn-sm p-0 small"><?php echo xlt('Regenerate'); ?></button>
+                        <?php endif; ?>
+                    </div>
+                    <textarea id="pz-summary-text" name="summary_text" class="form-control" rows="4"<?php echo !$canWrite ? ' readonly' : ''; ?>><?php echo text($summaryText); ?></textarea>
                 </div>
             </div>
         </div>
@@ -641,6 +651,23 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
         zoneLabels: <?php echo json_encode($zoneLabels, $jsonFlags); ?>,
         qualityOptions: <?php echo json_encode(array_keys($qualityOptions), $jsonFlags); ?>,
         qualityLabels: <?php echo json_encode($qualityLabels, $jsonFlags); ?>,
+        bandLabels: <?php echo json_encode([
+            'none'     => xl('None'),
+            'mild'     => xl('Mild'),
+            'moderate' => xl('Moderate'),
+            'severe'   => xl('Severe'),
+        ], $jsonFlags); ?>,
+        summaryLabels: <?php echo json_encode([
+            'quality'      => xl('Quality'),
+            'radiation'    => xl('Radiation'),
+            'onset'        => xl('Onset'),
+            'duration'     => xl('Duration'),
+            'aggravating'  => xl('Aggravating'),
+            'relieving'    => xl('Relieving'),
+            'notes'        => xl('Notes'),
+            'generalNotes' => xl('General Notes'),
+            'noMarks'      => xl('No pain marks recorded.'),
+        ], $jsonFlags); ?>,
         svgContent: <?php echo json_encode($svgContent, $jsonFlags); ?>,
         marks: <?php echo json_encode($clientMarks, $jsonFlags); ?>,
         loadedIds: <?php echo json_encode($loadedIds, $jsonFlags); ?>,
@@ -925,6 +952,7 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
         renderMarksOnSvg();
         renderSidebarMarks();
         updateRadioCounters();
+        refreshSummaryText();
     });
 
     document.getElementById('pz-modal-delete').addEventListener('click', () => {
@@ -937,8 +965,14 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
             renderMarksOnSvg();
             renderSidebarMarks();
             updateRadioCounters();
+            refreshSummaryText();
         }
     });
+
+    const summaryRegenerateBtn = document.getElementById('pz-summary-regenerate');
+    if (summaryRegenerateBtn) {
+        summaryRegenerateBtn.addEventListener('click', refreshSummaryText);
+    }
 
     // Collect shape elements belonging to a zone, stopping at child valid zones
     function collectShapeElements(node, isRoot, activeZones) {
@@ -965,6 +999,73 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
             .split('_')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
             .join(' ');
+    }
+
+    // Mirrors pz_intensityBandLabel() on the server.
+    function intensityBandLabel(intensity) {
+        const n = parseInt(intensity, 10) || 0;
+        let band = 'severe';
+        if (n <= 0) band = 'none';
+        else if (n <= 3) band = 'mild';
+        else if (n <= 6) band = 'moderate';
+        return (PZ.bandLabels && PZ.bandLabels[band]) ? PZ.bandLabels[band] : band;
+    }
+
+    // Mirrors pz_buildSummary() on the server so the preview matches what is stored.
+    function buildSummaryText() {
+        const lbl = PZ.summaryLabels || {};
+        const fieldDefs = [
+            ['pain_quality', lbl.quality     || 'Quality',     true],
+            ['radiation',    lbl.radiation   || 'Radiation',   false],
+            ['onset',        lbl.onset       || 'Onset',       false],
+            ['duration',     lbl.duration    || 'Duration',    false],
+            ['aggravating',  lbl.aggravating || 'Aggravating', false],
+            ['relieving',    lbl.relieving   || 'Relieving',   false],
+            ['notes',        lbl.notes       || 'Notes',       false],
+        ];
+
+        const active = PZ.marks.filter(m => m.active !== 0);
+        const sorted = active.slice().sort((a, b) =>
+            (parseInt(b.intensity, 10) || 0) - (parseInt(a.intensity, 10) || 0)
+        );
+
+        const lines = [];
+        if (sorted.length === 0) {
+            lines.push(lbl.noMarks || 'No pain marks recorded.');
+        } else {
+            sorted.forEach(m => {
+                const n = parseInt(m.intensity, 10) || 0;
+                const parts = [
+                    formatZoneDisplay(m.zone_id) + ': ' + intensityBandLabel(n) + ' ' + n + '/10'
+                ];
+                fieldDefs.forEach(def => {
+                    let value = (m[def[0]] == null) ? '' : String(m[def[0]]).trim();
+                    if (value === '') return;
+                    if (def[2] && PZ.qualityLabels && PZ.qualityLabels[value]) {
+                        value = PZ.qualityLabels[value];
+                    }
+                    parts.push(def[1] + ': ' + value);
+                });
+                lines.push(parts.join('; '));
+            });
+        }
+
+        const generalNotesEl = document.getElementById('pz-general-notes');
+        const generalNotes = generalNotesEl ? generalNotesEl.value.trim() : '';
+        if (generalNotes !== '') {
+            lines.push((lbl.generalNotes || 'General Notes') + ': ' + generalNotes);
+        }
+
+        return lines.join('\n');
+    }
+
+    // Auto-fill the editable summary preview (never in read-only mode).
+    function refreshSummaryText() {
+        if (!PZ.canWrite) return;
+        const el = document.getElementById('pz-summary-text');
+        if (el) {
+            el.value = buildSummaryText();
+        }
     }
 
     function findZoneIdFromTarget(target, svg) {
@@ -1497,6 +1598,7 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
                         renderMarksOnSvg();
                         renderSidebarMarks();
                         updateRadioCounters();
+                        refreshSummaryText();
                     }
                 });
 
@@ -1626,6 +1728,8 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
         formData.append('marks_json', JSON.stringify(cleanMarks));
         formData.append('loaded_ids', JSON.stringify(PZ.loadedIds));
         formData.append('general_notes', generalNotesEl ? generalNotesEl.value : '');
+        const summaryTextEl = document.getElementById('pz-summary-text');
+        formData.append('summary_text', summaryTextEl ? summaryTextEl.value : '');
 
         fetch(PZ.saveUrl, {
             method: 'POST',

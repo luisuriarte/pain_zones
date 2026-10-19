@@ -62,6 +62,12 @@ Interactive clinical encounter form for anatomical pain mapping in **OpenEMR**. 
   - Centralized list displaying all marks recorded across all 4 body panels.
   - Instant navigation: clicking any card in the list automatically switches the panel to that figure and view.
 
+- 🧾 **Editable Clinical Summary (`summary_text`):**
+  - A **Summary Text** box sits below General Notes in the form. Confirming or deleting a mark auto-fills it from the current marks and general notes using a fixed, deterministic template (no AI, no free-form generation).
+  - One line per mark ordered by intensity descending: translated anatomical zone plus laterality, severity band and `N/10`, then only the semiology fields that hold a value (quality, radiation, onset, duration, aggravating, relieving, notes). General notes are appended as a final line; with no marks a fixed translatable phrase is shown.
+  - The clinician can correct the text before saving and the reviewed text is persisted with the form. A **Regenerate** link rebuilds it from the current marks. If the field is missing (legacy client), the server regenerates it inside the save transaction.
+  - Stored as plain text (never HTML) and intended as context for the SOAP note.
+
 ---
 
 ## 📸 Screenshots
@@ -84,7 +90,7 @@ The module provisions three relational tables and populates two lists in `list_o
 
 1. **`form_pain_zones` (Form Header):**
    - Binds the clinical encounter (`id`, `date`, `pid`, `user`, `groupname`, `authorized`, `activity`).
-   - Stores `general_notes` (up to 5,000 characters) and generated clinical summary (`summary_text`).
+   - Stores `general_notes` (up to 5,000 characters) and the editable plain-text `summary_text` (auto-filled from the marks and reviewable before saving, with server-side regeneration as fallback; see `pz_buildSummary()` in `pain_zones.inc.php`).
 
 2. **`form_pain_zones_marks` (Pain Marks):**
    - Records each pain point: `figure`, `body_view`, `zone_id`, `laterality`, `x_pct`, `y_pct`, `intensity` (0–10), `pain_quality`, `radiation`, `onset`, `duration`, `aggravating`, `relieving`, `notes`, and active flag (`activity = 1`, soft-deleted if `0`).
@@ -180,13 +186,15 @@ mysql -u openemr -p openemr < /var/www/html/openemr/interface/forms/pain_zones/l
 2. **Zoom & Position:** Use the mouse wheel or floating buttons to zoom in. Drag with the right mouse button to pan across the figure.
 3. **Place Mark:** Left-click on any body zone. Enter the intensity (0–10), quality, radiation, and notes in the dialog.
 4. **Edit or Remove:** Click any pin on the map or select an entry in the sidebar list to modify or delete a mark.
-5. **Save:** Click **Save Form**. Data is persisted in a database transaction and the tab closes, refreshing the encounter view.
+5. **Review & Save:** Confirming each mark fills the editable **Summary Text** box; correct it if needed (or click **Regenerate**). Clicking **Save Form** persists the marks and the reviewed summary in a single transaction, then the tab closes, refreshing the encounter view.
 
 ---
 
 ## 🖨️ Encounter Reports
 
 The file `report.php` implements `pain_zones_report()`. It generates a clean HTML table detailing all marks, intensities, qualities, and notes, which OpenEMR embeds automatically into the patient's encounter record and printable chart export.
+
+Separately, the editable plain-text clinical summary stored in `summary_text` (auto-filled by the form, with server-side `pz_buildSummary()` as fallback) provides a compact, human-readable digest of the marks for use as context in the SOAP note. It is not the same as the tabular report.
 
 ---
 
