@@ -20,6 +20,7 @@ Formulario de encuentro clínico para el mapeo anatómico interactivo de dolor e
 - [📁 Estructura del Directorio](#-estructura-del-directorio)
 - [🚀 Instalación y Activación](#-instalación-y-activación)
 - [🩺 Flujo de Uso](#-flujo-de-uso)
+- [🔎 Comparación de Visitas y Mapa de Calor](#-comparación-de-visitas-y-mapa-de-calor)
 - [🖨️ Reportes del Encuentro](#-reportes-del-encuentro)
 - [🛡️ Control de Acceso (ACL)](#-control-de-acceso-acl)
 - [💻 Compatibilidad Verificada](#-compatibilidad-verificada)
@@ -67,6 +68,12 @@ Formulario de encuentro clínico para el mapeo anatómico interactivo de dolor e
   - Un renglón por marca ordenado por intensidad descendente: zona anatómica traducida con su lateralidad, banda de severidad y `N/10`, y luego solo los campos semiológicos con valor (cualidad, irradiación, inicio, duración, agravantes, atenuantes, notas). Las notas generales se agregan como renglón final; si no hay marcas se muestra una frase fija traducible.
   - El clínico puede corregir el texto antes de guardar y ese texto revisado se persiste con el formulario. El enlace **Regenerar** lo reconstruye desde las marcas actuales. Si el campo no llega (cliente antiguo), el servidor lo regenera dentro de la transacción de guardado.
   - Se guarda como texto plano (nunca HTML) y sirve de contexto para la nota SOAP.
+
+- 🔎 **Comparación de Visitas de Solo Lectura (`compare.php`):**
+  - Vista de solo lectura, por paciente, que correlaciona las marcas **confirmadas** de visitas anteriores en un rango de fechas seleccionable (últimos 30 días, 3/6/12 meses, todo el historial o un rango personalizado).
+  - **Modo Superposición:** dibuja las marcas de hasta cinco visitas sobre la misma figura, con un color distinto por visita y selección automática de las 3 visitas más recientes.
+  - **Modo Mapa de Calor:** colorea cada zona anatómica según la métrica elegida (**Máxima** por defecto, **Promedio** o **Recuento** de visitas), calculada a partir de la intensidad más alta registrada por zona y visita.
+  - Incluye tabla de totales por visita, tabla de calor por zona, leyenda de colores, diseño imprimible y accesos directos desde el formulario y el reporte del encuentro.
 
 ---
 
@@ -140,6 +147,7 @@ interface/forms/pain_zones/
 ├── info.txt                    # Nombre del formulario registrado por OpenEMR
 ├── lang_custom.sql             # Traducciones de interfaz en español latinoamericano
 ├── LICENSE                     # Texto de la Licencia GNU GPL v3.0
+├── compare.php                 # Vista de solo lectura: comparación de visitas y mapa de calor
 ├── new.php                     # Interfaz interactiva de captura, edición y vista
 ├── pain_zones.inc.php          # Lógica auxiliar, validación, paletas y consultas
 ├── README.md                   # Documentación técnica en inglés
@@ -190,6 +198,30 @@ mysql -u openemr -p openemr < /var/www/html/openemr/interface/forms/pain_zones/l
 
 ---
 
+## 🔎 Comparación de Visitas y Mapa de Calor
+
+`compare.php` es una página **de solo lectura**, por paciente, que pone el cuadro de dolor actual junto a los anteriores. Nunca escribe en la base de datos y requiere el mismo permiso de lectura `patients/med` que el formulario. Solo lee formularios **confirmados** (`review_status = 'confirmed'`) y activos (`activity = 1`) del paciente en sesión; los borradores y las visitas eliminadas se ignoran.
+
+**Filtros (validados en el servidor; los valores desconocidos vuelven a los predeterminados):**
+
+- **Rango de Fechas:** últimos 30 días, últimos 3 / 6 / 12 meses (predeterminado), todo el historial o un rango personalizado `Desde`–`Hasta`. Las fechas imposibles vuelven al rango de 12 meses y un rango invertido se ordena automáticamente.
+- **Figura / Vista:** Hombre o Mujer Adulta, Anterior o Posterior. La página abre en el panel con más datos en el rango seleccionado.
+- **Modo:** Superposición o Mapa de Calor.
+- **Métrica de Calor:** Máxima (predeterminada), Promedio o Recuento.
+
+**Modo Superposición** dibuja las marcas de las visitas seleccionadas sobre una misma figura, con un color distinto por visita (paleta Okabe–Ito) y una leyenda que asocia cada color con la fecha de su visita. Se pueden superponer hasta **5** visitas; la página preselecciona las **3 más recientes** y el navegador impide marcar una sexta. Un campo oculto `visits_present` distingue "ninguna visita seleccionada" de "no enviado", de modo que vaciar la selección se respeta en lugar de volver a los valores predeterminados.
+
+**Modo Mapa de Calor** colorea cada zona anatómica según la métrica activa. Como una zona puede marcarse varias veces en una misma visita, el valor de calor siempre se deriva de **un valor por zona y visita**: la intensidad más alta registrada para esa zona en esa visita:
+
+- **Máxima:** el valor más alto entre las visitas del rango (paleta 0–10, los mismos colores del formulario).
+- **Promedio:** la media de los valores por visita.
+- **Recuento:** el número de visitas distintas en las que se marcó la zona (escala secuencial de claro a oscuro).
+
+Ambos modos acompañan una **tabla de totales por visita** (fecha, marcas, máxima, promedio) y, en mapa de calor, una **tabla de calor por zona** ordenada por la métrica activa. Cada cifra está acotada al panel de figura y vista seleccionado. Al pasar el cursor sobre una zona se muestra un globo con sus visitas, marcas, máxima, promedio y última visita. La disposición se imprime correctamente con el botón **Imprimir**.
+
+Accesos directos: el botón **Comparar Visitas** en la barra de acciones del formulario y el enlace **Comparar con visitas anteriores** en el reporte del encuentro. Ambos cargan la página dentro de la pestaña del encuentro actual (el mismo patrón que usa el módulo de asistente con IA), de modo que se conserva el diseño de pestañas de OpenEMR. Un botón **Volver** regresa al formulario de Pain Zones desde el que se abrió la página — o, si se abrió desde el reporte del encuentro, a la lista de formularios del encuentro.
+
+---
 ## 🖨️ Reportes del Encuentro
 
 El archivo `report.php` define la función `pain_zones_report()`. Genera una tabla HTML limpia con el detalle de las marcas (zona, lateralidad, intensidad, cualidad, notas), la cual OpenEMR integra de forma estándar en el historial del encuentro y en el resumen imprimible de la consulta médica.

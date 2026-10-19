@@ -164,4 +164,27 @@ function pain_zones_report($pid, $encounter, $cols, $id): void
         echo '<span class="text">' . text($generalNotes) . '</span>';
         echo '</div>';
     }
+
+    echo '<div style="margin-top: 8px; font-size: 0.9em;">';
+    echo '<a href="' . attr(pz_rootdir() . '/forms/pain_zones/compare.php') . '"'
+        . ' class="link" onclick="return pzCompareOpen(this);">';
+    echo xlt('Compare with previous visits');
+    echo '</a>';
+    echo '</div>';
+    ?>
+    <script>
+        if (typeof window.pzCompareOpen !== 'function') {
+            window.pzCompareOpen = function (link) {
+                // Navigate the current encounter tab to the comparison page, matching
+                // the AI assistant module. Without a "return" target the page's own
+                // "Go Back" button falls back to the encounter form list.
+                if (typeof top.restoreSession === 'function') {
+                    top.restoreSession();
+                }
+                window.location.href = link.href;
+                return false;
+            };
+        }
+    </script>
+    <?php
 }

@@ -178,6 +178,10 @@ $rootdir = pz_rootdir();
 $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
     ? '?mode=update&id=' . attr_url((string)$formId)
     : '?mode=new');
+// URL this form was opened from, used as the "back" target of the compare page.
+$nativeViewUrl = $rootdir . '/patient_file/encounter/view_form.php?formname=pain_zones'
+    . ($formId > 0 ? '&id=' . attr_url((string)$formId) : '');
+$compareUrl = $rootdir . '/forms/pain_zones/compare.php?return=' . attr_url($nativeViewUrl);
 ?>
 <!DOCTYPE html>
 <html>
@@ -430,6 +434,7 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
             <?php endif; ?>
         </h3>
         <div class="d-flex">
+            <button type="button" id="pz-compare-btn" class="btn btn-outline-secondary mr-2"><?php echo xlt('Compare Visits'); ?></button>
             <button type="button" id="pz-cancel-btn" class="btn btn-secondary mr-2"><?php echo xlt('Cancel'); ?></button>
             <?php if ($canWrite): ?>
                 <button type="button" id="pz-save-btn" class="btn btn-primary"><?php echo xlt('Save'); ?></button>
@@ -1679,6 +1684,11 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
         }
     });
 
+    // Compare Visits Button logic
+    document.getElementById('pz-compare-btn').addEventListener('click', () => {
+        pzOpenCompare();
+    });
+
     // Save logic
     const saveBtn = document.getElementById('pz-save-btn');
     if (saveBtn) {
@@ -1694,6 +1704,18 @@ $saveUrl = $rootdir . '/forms/pain_zones/save.php' . (($formId > 0)
         } else {
             alert(message);
         }
+    }
+
+    function pzOpenCompare() {
+        // Navigate the current encounter tab to the comparison page, matching the
+        // AI assistant module: the editor replaces this view inside the same
+        // iframe, and its "Go Back" button navigates back to this form.
+        if (typeof top.restoreSession === 'function') {
+            top.restoreSession();
+        } else if (parent && typeof parent.restoreSession === 'function') {
+            parent.restoreSession();
+        }
+        window.location.href = <?php echo json_encode($compareUrl, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
     }
 
     function submitForm() {

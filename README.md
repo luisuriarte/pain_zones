@@ -20,6 +20,7 @@ Interactive clinical encounter form for anatomical pain mapping in **OpenEMR**. 
 - [📁 Directory Structure](#-directory-structure)
 - [🚀 Installation & Setup](#-installation--setup)
 - [🩺 Clinical Workflow](#-clinical-workflow)
+- [🔎 Visit Comparison & Heat Map](#-visit-comparison--heat-map)
 - [🖨️ Encounter Reports](#-encounter-reports)
 - [🛡️ Access Control (ACL)](#-access-control-acl)
 - [💻 Verified Compatibility](#-verified-compatibility)
@@ -67,6 +68,12 @@ Interactive clinical encounter form for anatomical pain mapping in **OpenEMR**. 
   - One line per mark ordered by intensity descending: translated anatomical zone plus laterality, severity band and `N/10`, then only the semiology fields that hold a value (quality, radiation, onset, duration, aggravating, relieving, notes). General notes are appended as a final line; with no marks a fixed translatable phrase is shown.
   - The clinician can correct the text before saving and the reviewed text is persisted with the form. A **Regenerate** link rebuilds it from the current marks. If the field is missing (legacy client), the server regenerates it inside the save transaction.
   - Stored as plain text (never HTML) and intended as context for the SOAP note.
+
+- 🔎 **Read-Only Visit Comparison (`compare.php`):**
+  - Patient-scoped, read-only view that correlates the **confirmed** marks of previous visits over a selectable date range (last 30 days, 3/6/12 months, all time, or a custom window).
+  - **Overlay mode:** renders the pins of up to five visits on the same figure, one distinct color per visit, with an auto-selected "last 3 visits" default.
+  - **Heatmap mode:** tints each anatomical zone by a chosen metric (**Maximum** by default, **Average** or **Count** of visits), computed from the highest intensity recorded per zone and visit.
+  - Includes a per-visit totals table and a zone heat table, a color legend, printable layout, and entry points from the form and the encounter report.
 
 ---
 
@@ -140,6 +147,7 @@ interface/forms/pain_zones/
 ├── info.txt                    # OpenEMR form display name
 ├── lang_custom.sql             # Latin American Spanish translations
 ├── LICENSE                     # GNU General Public License v3.0 text
+├── compare.php                 # Read-only visit comparison and zone heat map
 ├── new.php                     # Interactive map, editing, and view interface
 ├── pain_zones.inc.php          # Backend helpers, ACL checks, and palette queries
 ├── README.md                   # English technical documentation
@@ -187,6 +195,31 @@ mysql -u openemr -p openemr < /var/www/html/openemr/interface/forms/pain_zones/l
 3. **Place Mark:** Left-click on any body zone. Enter the intensity (0–10), quality, radiation, and notes in the dialog.
 4. **Edit or Remove:** Click any pin on the map or select an entry in the sidebar list to modify or delete a mark.
 5. **Review & Save:** Confirming each mark fills the editable **Summary Text** box; correct it if needed (or click **Regenerate**). Clicking **Save Form** persists the marks and the reviewed summary in a single transaction, then the tab closes, refreshing the encounter view.
+
+---
+
+## 🔎 Visit Comparison & Heat Map
+
+`compare.php` is a **read-only**, patient-scoped page that puts the current pain picture next to previous ones. It never writes to the database and requires the same `patients/med` read permission as the form. It reads only **confirmed** (`review_status = 'confirmed'`) and active (`activity = 1`) forms of the patient in the session; drafts and soft-deleted visits are ignored.
+
+**Filters (all validated server-side; unknown values fall back to defaults):**
+
+- **Date Range:** last 30 days, last 3 / 6 / 12 months (default), all time, or a custom `From`–`To` window. Impossible dates fall back to the default 12 months, and a reversed window is swapped automatically.
+- **Figure / View:** Adult Male or Adult Female, Anterior or Posterior. The page opens on the panel that has the most data in the selected range.
+- **Mode:** Overlay or Heatmap.
+- **Heat Metric:** Maximum (default), Average, or Count.
+
+**Overlay mode** draws the pins of the selected visits on a single figure, one distinct color per visit (Okabe–Ito palette), with a legend that maps each color to its visit date. Up to **5** visits can be overlaid; the page preselects the **3 most recent** and the browser prevents ticking a sixth. A hidden `visits_present` field distinguishes "no visits selected" from "not submitted", so clearing the selection is respected instead of silently re-defaulting.
+
+**Heatmap mode** tints each anatomical zone by the selected metric. Because a zone can be marked several times in one visit, the heat value is always derived from **one value per zone and visit** — the highest intensity recorded for that zone in that visit:
+
+- **Maximum:** the highest per-visit value across the range (0–10 palette, same colors as the form).
+- **Average:** the mean of the per-visit values.
+- **Count:** the number of distinct visits in which the zone was marked (sequential light-to-dark scale).
+
+Both modes sit next to a **per-visit totals table** (date, marks, maximum, average) and, in heatmap mode, a **zone heat table** sorted by the active metric. Every number is scoped to the selected figure and view panel. Hovering a zone shows a tooltip with its visits, marks, maximum, average, and last visit. The layout prints cleanly via the **Print** button.
+
+Entry points: the **Compare Visits** button in the form's action bar and the **Compare with previous visits** link in the encounter report. Both load the page inside the current encounter tab (the same pattern the AI assistant module uses), so the OpenEMR tab layout is preserved. A **Go Back** button returns to the Pain Zones form the page was opened from — or, when opened from the encounter report, to the encounter form list.
 
 ---
 
