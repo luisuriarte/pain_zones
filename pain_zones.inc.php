@@ -327,6 +327,124 @@ function pz_deriveLaterality(string $zone_id): string
 }
 
 // ---------------------------------------------------------------------------
+// Anatomical Zone Labels & Clinical Descriptions
+// ---------------------------------------------------------------------------
+
+/**
+ * Base anatomical zone labels (English).
+ * Stripped of lateral suffixes (_left, _right).
+ * Translated via xl() in pz_zoneLabel().
+ */
+const PZ_ZONE_LABELS = [
+    'abdomen_epigastric'    => 'Epigastrium',
+    'abdomen_flank'         => 'Flank',
+    'abdomen_hypochondriac' => 'Hypochondrium',
+    'abdomen_iliac'         => 'Iliac Fossa',
+    'abdomen_suprapubic'    => 'Suprapubic Region',
+    'abdomen_umbilical'     => 'Umbilical Region',
+    'ankle_achilles'        => 'Achilles Tendon',
+    'ankle_anterior'        => 'Anterior Ankle',
+    'back_iliac_crest'      => 'Iliac Crest',
+    'back_interscapular'    => 'Interscapular Region',
+    'back_lumbar'           => 'Lumbar Region',
+    'back_sacrum'           => 'Sacrum',
+    'back_scapula'          => 'Scapula',
+    'back_thoracic'         => 'Thoracic Back',
+    'back_trapezius'        => 'Trapezius',
+    'buttock'               => 'Buttock',
+    'chest_axilla'          => 'Axilla',
+    'chest_breast'          => 'Breast',
+    'chest_pectoral'        => 'Pectoral Region',
+    'chest_rib'             => 'Rib Cage',
+    'chest_sternum'         => 'Sternum',
+    'clavicle'              => 'Clavicle',
+    'elbow_antecubital'     => 'Antecubital Fossa',
+    'elbow_olecranon'       => 'Olecranon',
+    'foot_dorsum'           => 'Foot Dorsum',
+    'foot_heel'             => 'Heel',
+    'foot_toes'             => 'Toes',
+    'forearm_anterior'      => 'Anterior Forearm',
+    'forearm_posterior'     => 'Posterior Forearm',
+    'genitals'              => 'Genitals',
+    'genitals_penis'        => 'Penis',
+    'genitals_testicle'     => 'Testicle',
+    'hand_dorsum'           => 'Hand Dorsum',
+    'hand_fingers'          => 'Fingers',
+    'hand_palm'             => 'Palm',
+    'head_ear'              => 'Ear',
+    'head_eye'              => 'Eye',
+    'head_eyebrow'          => 'Eyebrow',
+    'head_face'             => 'Cheek',
+    'head_forehead'         => 'Forehead',
+    'head_jaw'              => 'Jaw',
+    'head_mouth'            => 'Mouth',
+    'head_nose'             => 'Nose',
+    'head_occipital'        => 'Occipital Region',
+    'head_parietal'         => 'Parietal Region',
+    'head_temple'           => 'Temple',
+    'hip_lateral'           => 'Lateral Hip',
+    'knee_patella'          => 'Patella',
+    'knee_popliteal'        => 'Popliteal Fossa',
+    'lower_leg_anterior'    => 'Anterior Leg',
+    'lower_leg_posterior'   => 'Calf',
+    'neck_anterior'         => 'Anterior Neck',
+    'neck_lateral'          => 'Lateral Neck',
+    'neck_posterior'        => 'Posterior Neck',
+    'pelvis_groin'          => 'Groin',
+    'pelvis_pubic'          => 'Pubis',
+    'perineum'              => 'Perineum',
+    'shoulder_anterior'     => 'Anterior Shoulder',
+    'shoulder_posterior'    => 'Posterior Shoulder',
+    'spine_cervical'        => 'Cervical Spine',
+    'spine_coccyx'          => 'Coccyx',
+    'spine_lumbar'          => 'Lumbar Spine',
+    'spine_sacral'          => 'Sacral Spine',
+    'spine_thoracic'        => 'Thoracic Spine',
+    'thigh_anterior'        => 'Anterior Thigh',
+    'thigh_posterior'       => 'Posterior Thigh',
+    'upper_arm_anterior'    => 'Anterior Upper Arm',
+    'upper_arm_posterior'   => 'Posterior Upper Arm',
+    'wrist_anterior'        => 'Anterior Wrist',
+    'wrist_posterior'       => 'Posterior Wrist',
+];
+
+/**
+ * Returns the translated clinical label for a zone ID, appending
+ * translated laterality in parentheses when applicable (e.g. 'Patella (Left)').
+ * If the zone ID is not in the dictionary, returns it formatted with spaces.
+ */
+function pz_zoneLabel(string $zone_id): string
+{
+    $zone_id = trim($zone_id);
+    if ($zone_id === '') {
+        return '';
+    }
+
+    $laterality = '';
+    if (str_ends_with($zone_id, '_left')) {
+        $laterality = xl('Left');
+        $baseId = substr($zone_id, 0, -5);
+    } elseif (str_ends_with($zone_id, '_right')) {
+        $laterality = xl('Right');
+        $baseId = substr($zone_id, 0, -6);
+    } else {
+        $baseId = $zone_id;
+    }
+
+    if (isset(PZ_ZONE_LABELS[$baseId])) {
+        $label = xl(PZ_ZONE_LABELS[$baseId]);
+    } else {
+        $label = ucwords(str_replace('_', ' ', $baseId));
+    }
+
+    if ($laterality !== '') {
+        $label .= ' (' . $laterality . ')';
+    }
+
+    return $label;
+}
+
+// ---------------------------------------------------------------------------
 // ACL helpers
 // ---------------------------------------------------------------------------
 
