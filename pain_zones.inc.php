@@ -445,6 +445,108 @@ function pz_zoneLabel(string $zone_id): string
 }
 
 // ---------------------------------------------------------------------------
+// Clinical summary (plain text, one line per mark)
+// ---------------------------------------------------------------------------
+
+/**
+ * Translate a pain-level number (0..10) to its severity band label.
+ *
+ * Pure function (no database access); the label is fully translatable via xl().
+ * Matches the mapping used in the marks table (`form_pain_zones_marks.intensity`):
+ * 0 none / 1-3 mild / 4-6 moderate / 7-10 severe.
+ *
+ * @param int $intensity
+ * @return string Translated severity band (e.g. "Intense", "Moderate", "Mild", "None").
+ */
+function pz_intensityBandLabel(int $intensity): string
+{
+    if ($intensity <= 0) {
+        return xl('None');
+    }
+    if ($intensity <= 3) {
+        return xl('Mild');
+    }
+    if ($intensity <= 6) {
+        return xl('Moderate');
+    }
+    return xl('Severe');
+}
+
+/**
+ * Build the plain-text clinical summary for a set of marks plus optional general notes.
+ *
+ * Pure function (no database access, no side effects). Output is a fixed,
+ * deterministic template — no AI, no free-form generation. It is meant to be
+ * stored in `form_pain_zones.summary_text` and consumed by the SOAP note.
+ *
+ * Format (one line per mark, ordered by intensity DESC):
+ *
+ *     Rótula (Izquierda): intenso 8/10; cualidad: punzante; irradia a: pierna;
+ *     inicio: hace 3 días; duración: ...; agrava: ...; alivia: ...; notas: ...
+ *
+ * Only fields with a non-empty value are included. The general notes are
+ * appended as a final line when present. With no marks, a single fixed
+ * translatable phrase is returned (plus the general notes when present).
+ *
+ * Never include patient-identifying data here (no name, no DOB, no MRN).
+ *
+ * @param array<int, array<string, mixed>> $marks Rows from form_pain_zones_marks
+ *                                                 (zone_id, intensity, pain_quality,
+ *                                                 radiation, onset, duration,
+ *                                                 aggravating, relieving, notes).
+ * @param string|null                      $generalNotes Optional free-text notes for the form.
+ * @return string Plain-text summary (caller is responsible for text() on HTML output).
+ */
+function pz_buildSummary(array $marks, ?string $generalNotes): string
+{
+    $lines = [];
+
+    if (empty($marks)) {
+        $lines[] = xl('No pain marks recorded.');
+    } else {
+        // Copy so we do not mutate the caller's array; sort by intensity DESC.
+        $sorted = $marks;
+        usort($sorted, function ($a, $b): int {
+            return ((int)($b['intensity'] ?? 0)) <=> ((int)($a['intensity'] ?? 0));
+        });
+
+        foreach ($sorted as $mark) {
+            $intensity = (int)($mark['intensity'] ?? 0);
+            $zoneLabel = pz_zoneLabel((string)($mark['zone_id'] ?? ''));
+            $band      = pz_intensityBandLabel($intensity);
+
+            // "Zone: intenso 8/10; cualidad: ...; ..."
+            $parts = [$zoneLabel . ': ' . $band . ' ' . $intensity . '/10'];
+
+            $fields = [
+                xl('Quality')          => $mark['pain_quality'] ?? '',
+                xl('Radiation')        => $mark['radiation'] ?? '',
+                xl('Onset')            => $mark['onset'] ?? '',
+                xl('Duration')         => $mark['duration'] ?? '',
+                xl('Aggravating')      => $mark['aggravating'] ?? '',
+                xl('Relieving')        => $mark['relieving'] ?? '',
+                xl('Notes')            => $mark['notes'] ?? '',
+            ];
+            foreach ($fields as $label => $value) {
+                $value = trim((string)$value);
+                if ($value !== '') {
+                    $parts[] = $label . ': ' . $value;
+                }
+            }
+
+            $lines[] = implode('; ', $parts);
+        }
+    }
+
+    $generalNotes = trim((string)($generalNotes ?? ''));
+    if ($generalNotes !== '') {
+        $lines[] = xl('General Notes') . ': ' . $generalNotes;
+    }
+
+    return implode("\n", $lines);
+}
+
+// ---------------------------------------------------------------------------
 // ACL helpers
 // ---------------------------------------------------------------------------
 

@@ -157,8 +157,7 @@ foreach (array_keys(PZ_FIGURE_MAP) as $fig) {
     foreach (['anterior', 'posterior'] as $vw) {
         foreach ($validZones[$fig][$vw] as $zid) {
             if (!isset($zoneLabels[$zid])) {
-                $englishTitle = ucwords(str_replace('_', ' ', $zid));
-                $zoneLabels[$zid] = xl($englishTitle);
+                $zoneLabels[$zid] = pz_zoneLabel($zid);
             }
         }
     }

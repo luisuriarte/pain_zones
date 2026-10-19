@@ -416,6 +416,27 @@ try {
                 );
             }
         }
+
+        // ----------------------------------------------------------------
+        // E. Regenerate the plain-text summary from the CURRENT active marks
+        //    (re-read after the insert/update/soft-delete so it reflects the
+        //    saved state exactly). Pure text, stored on the parent form row.
+        // ----------------------------------------------------------------
+        $activeRes = sqlStatement(
+            "SELECT zone_id, intensity, pain_quality, radiation, onset,
+                    duration, aggravating, relieving, notes
+             FROM form_pain_zones_marks
+             WHERE form_id = ? AND pid = ? AND activity = 1",
+            [$formId, $pid]
+        );
+        $activeMarks = [];
+        while ($row = sqlFetchArray($activeRes)) {
+            $activeMarks[] = $row;
+        }
+        sqlStatement(
+            "UPDATE form_pain_zones SET summary_text = ? WHERE id = ? AND pid = ?",
+            [pz_buildSummary($activeMarks, $generalNotes), $formId, $pid]
+        );
     });
 
     // Success: instruct client to close the encounter tab (same as formJump())

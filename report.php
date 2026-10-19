@@ -88,7 +88,7 @@ function pain_zones_report($pid, $encounter, $cols, $id): void
     } else {
         foreach ($marks as $mark) {
             $rawZone       = (string)($mark['zone_id'] ?? '');
-            $zoneDisplay   = ucwords(str_replace('_', ' ', $rawZone));
+            $zoneDisplay   = pz_zoneLabel($rawZone);
             $rawLaterality = (string)($mark['laterality'] ?? 'midline');
             $lateralityDisplay = match ($rawLaterality) {
                 'left'    => xlt('Left'),
