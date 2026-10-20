@@ -67,6 +67,7 @@ INSERT IGNORE INTO lang_custom (lang_description, lang_code, constant_name, defi
 ('Spanish (Latin American)', 'el', 'Click on a mark to view details', 'Haga clic en una marca para ver detalles'),
 ('Spanish (Latin American)', 'el', 'Wheel: Zoom | Right-click: Pan | Left-click: Mark', 'Rueda: Zoom | Clic derecho: Mover | Clic izquierdo: Marcar'),
 ('Spanish (Latin American)', 'el', 'Wheel: Zoom | Right-click: Pan | Left-click: View', 'Rueda: Zoom | Clic derecho: Mover | Clic izquierdo: Ver'),
+('Spanish (Latin American)', 'el', 'Wheel: Zoom | Right-click: Pan', 'Rueda: Zoom | Clic derecho: Mover'),
 ('Spanish (Latin American)', 'el', 'Zoom Controls', 'Controles de Zoom'),
 ('Spanish (Latin American)', 'el', 'Zoom In', 'Acercar'),
 ('Spanish (Latin American)', 'el', 'Zoom Out', 'Alejar'),

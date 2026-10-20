@@ -1160,6 +1160,47 @@ function pz_patientFigure(int $pid): string
 
 
 // ---------------------------------------------------------------------------
+// Presentation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds an inline SVG gradient bar for the heat/intensity legend.
+ *
+ * SVG fills are printed by every browser (they are content, not CSS
+ * background), so this legend survives "print to PDF" even when the user
+ * leaves "Background graphics" unchecked. A CSS `linear-gradient` or
+ * `background-color` would print as an empty bordered box instead.
+ *
+ * @param array<int, string> $colors Hex colours, low to high.
+ */
+function pz_heatLegendSvg(array $colors, int $width = 170, int $height = 12): string
+{
+    $count = count($colors);
+    if ($count === 0) {
+        return '';
+    }
+
+    $svg  = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $width . ' ' . $height . '"'
+        . ' width="' . $width . '" height="' . $height . '"'
+        . ' preserveAspectRatio="none" aria-hidden="true" focusable="false"'
+        . ' class="pz-heat-legend-svg" style="display:inline-block;vertical-align:middle;">';
+
+    $segW = $width / $count;
+    for ($i = 0; $i < $count; $i++) {
+        $x = $i * $segW;
+        // Extend the last segment by a hair to avoid a sub-pixel seam at the edge.
+        $w = ($i === $count - 1) ? ($width - $x) : $segW;
+        $svg .= '<rect x="' . round($x, 3) . '" y="0" width="' . round($w, 3) . '" height="' . $height . '"'
+            . ' fill="' . htmlspecialchars($colors[$i], ENT_QUOTES) . '"/>';
+    }
+
+    $svg .= '</svg>';
+
+    return $svg;
+}
+
+
+// ---------------------------------------------------------------------------
 // ACL helpers
 // ---------------------------------------------------------------------------
 

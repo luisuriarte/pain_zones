@@ -220,6 +220,10 @@ mysql -u openemr -p openemr < /var/www/html/openemr/interface/forms/pain_zones/l
 
 Both modes sit next to a **per-visit totals table** (date, marks, maximum, average) and, in heatmap mode, a **zone heat table** sorted by the active metric. Every number is scoped to the selected figure and view panel. Hovering a zone shows a tooltip with its visits, marks, maximum, average, and last visit. The layout prints cleanly via the **Print** button.
 
+**Zoom & pan.** The anatomical map supports the same navigation as the entry form: **mouse-wheel zoom** centred on the cursor (1×–5×), **right-click drag** to pan, floating **+ / 100% / −** buttons, and touch gestures (pinch to zoom, drag to pan when zoomed). The controls are hidden when printing, and any filter change (visit, range, view or mode) reloads the page with the map back at 100%, since the zoom state is intentionally not persisted.
+
+**Printing.** The heat/intensity legend is rendered as an **inline SVG** (`pz_heatLegendSvg()`) instead of a CSS gradient, because browsers drop `background` colours and gradients when printing to PDF — that used to leave the legend as an empty bordered box. SVG fills are content and always print.
+
 Entry points: the **Compare Visits** button in the form's action bar and the **Compare with previous visits** link in the encounter report. Both load the page inside the current encounter tab (the same pattern the AI assistant module uses), so the OpenEMR tab layout is preserved. A **Go Back** button returns to the Pain Zones form the page was opened from — or, when opened from the encounter report, to the encounter form list.
 
 ---

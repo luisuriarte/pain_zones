@@ -119,9 +119,55 @@ function pz_compareColorForMetric(string $metric, float $value, int $maxVisits):
 }
 
 /**
+ * Builds the zone heat map used by overlay mode.
+ *
+ * Overlay mode shows one numbered pin per mark, coloured by visit; on top of
+ * that we tint every marked zone with the pain-level colour of its **highest**
+ * intensity among the pins actually drawn (i.e. the selected visits), taking
+ * the palette straight from the 0-10 level scale (level_0..level_10) rather
+ * than the count ramp.
+ *
+ * @param array<int, array{mark: array<string, mixed>, color: string, tooltip: string}> $pins
+ * @return array<string, array{color: array{fill: string, stroke: string}, tooltip: string}>
+ */
+function pz_compareOverlayZoneHeat(array $pins): array
+{
+    $palette = pz_getLevelColors();
+    $agg     = [];
+
+    foreach ($pins as $pin) {
+        $zoneId = (string)($pin['mark']['zone_id'] ?? '');
+        if ($zoneId === '') {
+            continue;
+        }
+
+        $intensity = (int)($pin['mark']['intensity'] ?? 0);
+        if (!isset($agg[$zoneId])) {
+            $agg[$zoneId] = ['max' => $intensity, 'marks' => 1];
+        } else {
+            $agg[$zoneId]['max']    = max($agg[$zoneId]['max'], $intensity);
+            $agg[$zoneId]['marks']++;
+        }
+    }
+
+    $heat = [];
+    foreach ($agg as $zoneId => $data) {
+        $level = (int)round(max(0.0, min(10.0, (float)$data['max'])));
+        $heat[$zoneId] = [
+            'color'   => $palette['level_' . $level] ?? ['fill' => '#BDBDBD', 'stroke' => '#848484'],
+            'tooltip' => pz_zoneLabel($zoneId) . "\n"
+                . xl('Marks') . ': ' . $data['marks'] . "\n"
+                . xl('Maximum') . ': ' . $data['max'],
+        ];
+    }
+
+    return $heat;
+}
+
+/**
  * Parses the SVG returned by pz_getSvgContent().
  */
-function pz_compareLoadSvg(string $svg): \DOMDocument
+function pz_compareLoadSvg(string $svg, bool $stripTitles = true): \DOMDocument
 {
     $doc = new \DOMDocument();
     $previous = libxml_use_internal_errors(true);
@@ -133,8 +179,14 @@ function pz_compareLoadSvg(string $svg): \DOMDocument
         throw new \RuntimeException('Unable to parse the Pain Zones SVG.');
     }
 
+    if (!$stripTitles) {
+        return $doc;
+    }
+
     // Drop every base <title> (Inkscape figure title and RDF metadata copies)
     // so they cannot mask the tooltips we add; new.php strips them the same way.
+    // Skipped when we re-parse markup that already carries our own tooltips
+    // (e.g. adding pins on top of the heat-tinted zones in overlay mode).
     $titles = [];
     foreach ($doc->getElementsByTagName('title') as $title) {
         $titles[] = $title;
@@ -248,14 +300,16 @@ function pz_compareApplyHeatToSvg(string $svg, array $zoneHeat, array $validZone
  * Adds a pins layer on top of the SVG (one circle + intensity label per mark).
  *
  * @param array<int, array{mark: array<string, mixed>, color: string, tooltip: string}> $pins
+ * @param bool $stripTitles When false, keep the <title> tooltips already present
+ *                          in $svg (used when stacking pins over heat-tinted zones).
  */
-function pz_compareAddPinsToSvg(string $svg, array $pins): string
+function pz_compareAddPinsToSvg(string $svg, array $pins, bool $stripTitles = true): string
 {
     if ($pins === []) {
         return $svg;
     }
 
-    $doc  = pz_compareLoadSvg($svg);
+    $doc  = pz_compareLoadSvg($svg, $stripTitles);
     $root = $doc->documentElement;
     if ($root === null) {
         return $svg;
@@ -680,9 +734,19 @@ $validZones = pz_getSvgZoneIds($figure, $view);
 $svgContent = pz_getSvgContent($figure, $view);
 
 if ($mode === 'heatmap' && $zoneHeat !== []) {
+    // Heatmap: zones tinted by the active metric, no per-visit pins.
     $svgMarkup = pz_compareApplyHeatToSvg($svgContent, $zoneHeat, $validZones);
-} elseif ($mode === 'overlay' && $pins !== []) {
-    $svgMarkup = pz_compareAddPinsToSvg($svgContent, $pins);
+} elseif ($mode === 'overlay') {
+    // Overlay: keep the per-visit pins and, underneath them, tint each marked
+    // zone with the pain-level colour of its highest intensity across the
+    // selected visits. This gives both readings at a glance: which zones hurt
+    // (colour) and which visit/level each mark belongs to (numbered pins).
+    $overlayZoneHeat = pz_compareOverlayZoneHeat($pins);
+    $svgMarkup = ($overlayZoneHeat !== [])
+        ? pz_compareApplyHeatToSvg($svgContent, $overlayZoneHeat, $validZones)
+        : $svgContent;
+    // Keep the zone tooltips the heat pass just added (stripTitles = false).
+    $svgMarkup = pz_compareAddPinsToSvg($svgMarkup, $pins, false);
 } else {
     $svgMarkup = $svgContent;
 }
@@ -717,11 +781,21 @@ $PZ_COMPARE_RETURN_URL = ($returnUrl !== '')
     : $rootdir . '/patient_file/encounter/forms.php';
 
 $palette       = pz_getLevelColors();
-$legendStops   = [];
+// Level colours in ascending intensity order, for the printable heat legend.
+$legendColors  = [];
 for ($i = 0; $i <= 10; $i++) {
-    $legendStops[] = $palette['level_' . $i]['fill'] . ' ' . ($i * 10) . '%';
+    $legendColors[] = $palette['level_' . $i]['fill'];
 }
-$legendGradient = 'linear-gradient(to right, ' . implode(', ', $legendStops) . ')';
+
+// Sequential light-orange -> dark-red ramp for the "count" metric legend.
+$countLegendColors = [];
+for ($ci = 0; $ci < 10; $ci++) {
+    $ratio = $ci / 9;
+    $r = (int)round(0xFF - (0xFF - 0xB7) * $ratio);
+    $g = (int)round(0xCC - (0xCC - 0x1C) * $ratio);
+    $b = (int)round(0x80 - (0x80 - 0x1C) * $ratio);
+    $countLegendColors[] = sprintf('#%02X%02X%02X', $r, $g, $b);
+}
 
 ?>
 <!DOCTYPE html>
@@ -743,11 +817,61 @@ $legendGradient = 'linear-gradient(to right, ' . implode(', ', $legendStops) . '
             min-height: 520px;
             overflow: hidden;
             background: #ffffff;
+            cursor: default;
+        }
+        .pz-compare-map.is-panning {
+            cursor: grab !important;
+        }
+        .pz-compare-map.is-panning * {
+            cursor: grab !important;
+            pointer-events: none;
+        }
+        /* Inner layer that carries the zoom/pan transform, so the outer box can
+           keep clipping the SVG. Same origin model as the entry form. */
+        .pz-compare-map-zoom {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            will-change: transform;
+            user-select: none;
         }
         .pz-compare-map svg {
             width: 100%;
             height: 100%;
             display: block;
+        }
+        .pz-zoom-controls {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            z-index: 1040;
+            background: rgba(255, 255, 255, 0.94);
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+        }
+        .pz-zoom-btn {
+            width: 40px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            color: #495057;
+            background: #ffffff;
+            border-color: #dee2e6;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .pz-zoom-btn:hover {
+            background: #e9ecef;
+            color: #212529;
+        }
+        .pz-zoom-label {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
         }
         .pz-visit-chip {
             display: inline-flex;
@@ -783,18 +907,22 @@ $legendGradient = 'linear-gradient(to right, ' . implode(', ', $legendStops) . '
             border-radius: 2px;
             margin-right: 5px;
         }
-        .pz-heat-legend-bar {
-            display: inline-block;
-            width: 170px;
-            height: 12px;
+        .pz-heat-legend-svg {
             border: 1px solid #adb5bd;
             border-radius: 2px;
             margin: 0 6px;
-            vertical-align: middle;
         }
         @media print {
             .pz-no-print {
                 display: none !important;
+            }
+            /* The level legend is inline SVG, so its fills always print; the
+               swatches/dots are solid backgrounds and need this to keep colour
+               when "Background graphics" is left unchecked. */
+            .pz-heat-swatch,
+            .pz-visit-dot {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             .pz-compare-container {
                 max-width: none;
@@ -964,11 +1092,25 @@ $legendGradient = 'linear-gradient(to right, ' . implode(', ', $legendStops) . '
                         <span class="font-weight-bold text-dark"><?php echo xlt('Anatomical Map'); ?></span>
                         <span class="small text-muted">
                             <?php echo text($figureLabel); ?> / <?php echo text($viewLabel); ?>
+                            <span class="pz-no-print">&middot; <?php echo xlt('Wheel: Zoom | Right-click: Pan'); ?></span>
                         </span>
                     </div>
                     <div class="card-body p-0">
-                        <div class="pz-compare-map">
-                            <?php echo $svgMarkup; // Trusted local SVG plus server-generated elements. ?>
+                        <div class="pz-compare-map" id="pz-compare-map">
+                            <div class="pz-compare-map-zoom" id="pz-compare-map-zoom">
+                                <?php echo $svgMarkup; // Trusted local SVG plus server-generated elements. ?>
+                            </div>
+                            <div class="pz-zoom-controls btn-group-vertical shadow-sm pz-no-print" role="group" aria-label="<?php echo xla('Zoom Controls'); ?>">
+                                <button type="button" class="btn btn-sm btn-light border pz-zoom-btn" id="pz-zoom-in" title="<?php echo xla('Zoom In'); ?>" aria-label="<?php echo xla('Zoom In'); ?>">
+                                    <span style="font-size:1.15rem; line-height:1; font-weight:bold;">+</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light border pz-zoom-btn" id="pz-zoom-reset" title="<?php echo xla('Reset Zoom'); ?>" aria-label="<?php echo xla('Reset Zoom'); ?>">
+                                    <span id="pz-zoom-label" class="pz-zoom-label">100%</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light border pz-zoom-btn" id="pz-zoom-out" title="<?php echo xla('Zoom Out'); ?>" aria-label="<?php echo xla('Zoom Out'); ?>">
+                                    <span style="font-size:1.15rem; line-height:1; font-weight:bold;">&minus;</span>
+                                </button>
+                            </div>
                         </div>
                         <?php if ($panelMarks === []): ?>
                             <div class="p-2 small text-muted">
@@ -989,6 +1131,12 @@ $legendGradient = 'linear-gradient(to right, ' . implode(', ', $legendStops) . '
                                             <span class="text-muted">(<?php echo (int)$visitStats[$formId]['marks']; ?>)</span>
                                         </span>
                                     <?php endforeach; ?>
+                                    <span class="small text-muted ml-3 mb-1">
+                                        <?php echo xlt('Zone shading'); ?>:
+                                        <span>0</span>
+                                        <?php echo pz_heatLegendSvg($legendColors); // SVG fill prints reliably. ?>
+                                        <span>10</span>
+                                    </span>
                                 </div>
                             <?php endif; ?>
                         <?php else: ?>
@@ -996,17 +1144,15 @@ $legendGradient = 'linear-gradient(to right, ' . implode(', ', $legendStops) . '
                                 <?php if ($metric === 'count'): ?>
                                     <span class="text-muted mr-2"><?php echo xlt('Visits with mark'); ?>:</span>
                                     <span>1</span>
-                                    <span class="pz-heat-legend-bar"
-                                          style="background: linear-gradient(to right, #FFCC80, #B71C1C);"></span>
+                                    <?php echo pz_heatLegendSvg($countLegendColors); // SVG fill prints reliably. ?>
                                     <span><?php echo (int)$maxZoneVisits; ?></span>
                                 <?php else: ?>
                                     <span class="text-muted mr-2"><?php echo xlt('Intensity'); ?>:</span>
                                     <span>0</span>
-                                    <span class="pz-heat-legend-bar"
-                                          style="background: <?php echo attr($legendGradient); ?>;"></span>
+                                    <?php echo pz_heatLegendSvg($legendColors); // SVG fill prints reliably. ?>
                                     <span>10</span>
                                 <?php endif; ?>
-                                <span class="text-muted ml-3"><?php echo xlt('Hover a zone to see details.'); ?></span>
+                                <span class="text-muted ml-3 pz-no-print"><?php echo xlt('Hover a zone to see details.'); ?></span>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -1141,6 +1287,178 @@ $legendGradient = 'linear-gradient(to right, ' . implode(', ', $legendStops) . '
             form.submit();
         });
     });
+}());
+
+// Zoom & pan for the anatomical map, mirroring the entry form (new.php):
+// mouse-wheel zoom centred on the cursor, right-drag panning, floating
+// buttons and touch gestures. The transform lives on an inner layer so the
+// outer box keeps clipping the SVG. Any reload (visit/range/view change)
+// resets it, since this state is not persisted.
+(function () {
+    'use strict';
+
+    const viewport = document.getElementById('pz-compare-map');
+    const layer    = document.getElementById('pz-compare-map-zoom');
+    if (!viewport || !layer) {
+        return;
+    }
+
+    const MIN_ZOOM = 1.0;
+    const MAX_ZOOM = 5.0;
+    const ZOOM_STEP = 1.25;
+
+    let zoomScale = 1.0;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+
+    function applyZoomPan(animate) {
+        if (animate) {
+            layer.style.transition = 'transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        } else {
+            layer.style.transition = 'none';
+        }
+        layer.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + zoomScale + ')';
+
+        const label = document.getElementById('pz-zoom-label');
+        if (label) {
+            label.textContent = Math.round(zoomScale * 100) + '%';
+        }
+    }
+
+    function resetZoomPan(animate) {
+        zoomScale = 1.0;
+        panX = 0;
+        panY = 0;
+        applyZoomPan(animate);
+    }
+
+    function zoomAtPoint(factor, clientX, clientY) {
+        const rect = viewport.getBoundingClientRect();
+        const originX = (clientX !== undefined) ? (clientX - rect.left) : (rect.width / 2);
+        const originY = (clientY !== undefined) ? (clientY - rect.top) : (rect.height / 2);
+
+        let newScale = zoomScale * factor;
+        newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newScale));
+
+        if (Math.abs(newScale - zoomScale) < 0.001) {
+            return;
+        }
+        if (newScale <= MIN_ZOOM) {
+            resetZoomPan(true);
+            return;
+        }
+
+        panX = originX - (originX - panX) * (newScale / zoomScale);
+        panY = originY - (originY - panY) * (newScale / zoomScale);
+        zoomScale = newScale;
+
+        applyZoomPan(true);
+    }
+
+    // 1. Mouse-wheel zoom, centred on the cursor.
+    viewport.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? ZOOM_STEP : (1 / ZOOM_STEP);
+        zoomAtPoint(factor, e.clientX, e.clientY);
+    }, { passive: false });
+
+    // 2. Suppress the native context menu so right-drag can pan freely.
+    viewport.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+    });
+
+    // 3. Right button starts panning.
+    viewport.addEventListener('mousedown', function (e) {
+        if (e.button === 2) {
+            e.preventDefault();
+            isPanning = true;
+            panStartX = e.clientX - panX;
+            panStartY = e.clientY - panY;
+            viewport.classList.add('is-panning');
+        }
+    });
+
+    window.addEventListener('mousemove', function (e) {
+        if (!isPanning) {
+            return;
+        }
+        panX = e.clientX - panStartX;
+        panY = e.clientY - panStartY;
+        applyZoomPan(false);
+    });
+
+    window.addEventListener('mouseup', function (e) {
+        if (isPanning && (e.button === 2 || e.buttons === 0)) {
+            isPanning = false;
+            viewport.classList.remove('is-panning');
+        }
+    });
+
+    // 4. Touch gestures: pinch to zoom, single-finger drag to pan (when zoomed).
+    let touchStartDist = 0;
+    let touchStartScale = 1;
+    let touchPanStartX = 0;
+    let touchPanStartY = 0;
+
+    viewport.addEventListener('touchstart', function (e) {
+        if (e.touches.length === 2) {
+            touchStartDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            touchStartScale = zoomScale;
+        } else if (e.touches.length === 1) {
+            touchPanStartX = e.touches[0].clientX - panX;
+            touchPanStartY = e.touches[0].clientY - panY;
+        }
+    }, { passive: true });
+
+    viewport.addEventListener('touchmove', function (e) {
+        if (e.touches.length === 2 && touchStartDist > 0) {
+            e.preventDefault();
+            const dist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            const ratio = dist / touchStartDist;
+            zoomAtPoint(ratio / (zoomScale / touchStartScale), midX, midY);
+        } else if (e.touches.length === 1 && zoomScale > 1.0) {
+            e.preventDefault();
+            panX = e.touches[0].clientX - touchPanStartX;
+            panY = e.touches[0].clientY - touchPanStartY;
+            applyZoomPan(false);
+        }
+    }, { passive: false });
+
+    // 5. Floating buttons.
+    const btnZoomIn = document.getElementById('pz-zoom-in');
+    if (btnZoomIn) {
+        btnZoomIn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            zoomAtPoint(ZOOM_STEP);
+        });
+    }
+
+    const btnZoomOut = document.getElementById('pz-zoom-out');
+    if (btnZoomOut) {
+        btnZoomOut.addEventListener('click', function (e) {
+            e.stopPropagation();
+            zoomAtPoint(1 / ZOOM_STEP);
+        });
+    }
+
+    const btnZoomReset = document.getElementById('pz-zoom-reset');
+    if (btnZoomReset) {
+        btnZoomReset.addEventListener('click', function (e) {
+            e.stopPropagation();
+            resetZoomPan(true);
+        });
+    }
 }());
 
 // Return to the view this page was opened from. Matching the AI assistant

@@ -220,6 +220,10 @@ mysql -u openemr -p openemr < /var/www/html/openemr/interface/forms/pain_zones/l
 
 Ambos modos acompañan una **tabla de totales por visita** (fecha, marcas, máxima, promedio) y, en mapa de calor, una **tabla de calor por zona** ordenada por la métrica activa. Cada cifra está acotada al panel de figura y vista seleccionado. Al pasar el cursor sobre una zona se muestra un globo con sus visitas, marcas, máxima, promedio y última visita. La disposición se imprime correctamente con el botón **Imprimir**.
 
+**Zoom y desplazamiento.** El mapa anatómico admite la misma navegación que el formulario de carga: **zoom con la rueda del ratón** centrado en el cursor (1×–5×), **arrastre con el botón derecho** para desplazar, botones flotantes **+ / 100% / −** y gestos táctiles (pellizcar para acercar, arrastrar para desplazar cuando hay zoom). Los controles se ocultan al imprimir, y cualquier cambio de filtro (visita, rango, vista o modo) recarga la página con el mapa de vuelta al 100%, ya que el estado de zoom no se persiste a propósito.
+
+**Impresión.** La leyenda de calor/intensidad se dibuja como **SVG en línea** (`pz_heatLegendSvg()`) en lugar de un degradado CSS, porque los navegadores descartan los fondos y degradados al imprimir a PDF — eso dejaba la leyenda como un rectángulo vacío con borde. Los rellenos del SVG son contenido y siempre se imprimen.
+
 Accesos directos: el botón **Comparar Visitas** en la barra de acciones del formulario y el enlace **Comparar con visitas anteriores** en el reporte del encuentro. Ambos cargan la página dentro de la pestaña del encuentro actual (el mismo patrón que usa el módulo de asistente con IA), de modo que se conserva el diseño de pestañas de OpenEMR. Un botón **Volver** regresa al formulario de Pain Zones desde el que se abrió la página — o, si se abrió desde el reporte del encuentro, a la lista de formularios del encuentro.
 
 ---
