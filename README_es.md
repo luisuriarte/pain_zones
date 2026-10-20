@@ -191,10 +191,11 @@ mysql -u openemr -p openemr < /var/www/html/openemr/interface/forms/pain_zones/l
 ## 🩺 Flujo de Uso
 
 1. **Apertura:** En un encuentro clínico activo, seleccione **Formularios Clínicos > Pain Zones**.
-2. **Navegación y Zoom:** Utilice la rueda del ratón o los botones flotantes para acercar la región de interés. Arrastre con el botón derecho para desplazar la figura.
-3. **Marcar Dolor:** Haga clic izquierdo sobre la zona corporal. Se abrirá el modal para registrar la intensidad (0 a 10), cualidad, irradiación y factores asociados.
-4. **Editar o Eliminar:** Haga clic sobre un pin circular en el mapa o use el listado lateral para modificar o eliminar una marca.
-5. **Revisar y Guardar:** Al confirmar cada marca se rellena el cuadro editable **Texto del Resumen**; corríjalo si hace falta (o pulse **Regenerar**). Al hacer clic en **Guardar Formulario** se persisten las marcas y el resumen revisado en una sola transacción, y la pestaña se cierra actualizando el encuentro.
+2. **Figura:** el diagrama corporal está **fijado al sexo de nacimiento registrado del paciente** (`patient_data.sex`, el campo *Sex at birth*): una paciente **Female** ve el diagrama femenino, **Male** el masculino, y cualquier otro valor (vacío o `UNK`) cae al diagrama masculino **con un aviso visible** que pide completar el sexo en la ficha del paciente. La figura **no es seleccionable**. Si un formulario guardado todavía tiene marcas dibujadas sobre la figura opuesta (datos heredados), aparece un selector de figura que ofrece ambos paneles para que esas marcas sigan siendo accesibles — nunca se ocultan.
+3. **Navegación y Zoom:** Utilice la rueda del ratón o los botones flotantes para acercar la región de interés. Arrastre con el botón derecho para desplazar la figura.
+4. **Marcar Dolor:** Haga clic izquierdo sobre la zona corporal. Se abrirá el modal para registrar la intensidad (0 a 10), cualidad, irradiación y factores asociados.
+5. **Editar o Eliminar:** Haga clic sobre un pin circular en el mapa o use el listado lateral para modificar o eliminar una marca.
+6. **Revisar y Guardar:** Al confirmar cada marca se rellena el cuadro editable **Texto del Resumen**; corríjalo si hace falta (o pulse **Regenerar**). Al hacer clic en **Guardar Formulario** se persisten las marcas y el resumen revisado en una sola transacción, y la pestaña se cierra actualizando el encuentro.
 
 ---
 
@@ -205,7 +206,7 @@ mysql -u openemr -p openemr < /var/www/html/openemr/interface/forms/pain_zones/l
 **Filtros (validados en el servidor; los valores desconocidos vuelven a los predeterminados):**
 
 - **Rango de Fechas:** últimos 30 días, últimos 3 / 6 / 12 meses (predeterminado), todo el historial o un rango personalizado `Desde`–`Hasta`. Las fechas imposibles vuelven al rango de 12 meses y un rango invertido se ordena automáticamente.
-- **Figura / Vista:** Hombre o Mujer Adulta, Anterior o Posterior. La página abre en el panel con más datos en el rango seleccionado.
+- **Figura / Vista:** la figura está **fijada al sexo registrado del paciente** (`patient_data.sex`): una paciente femenina ve el diagrama femenino y el resto el masculino. No es seleccionable, así que un enlace antiguo con `?figure=…` se ignora. Sólo se elige la **Vista** (Anterior o Posterior), que abre en el panel con más datos en el rango seleccionado.
 - **Modo:** Superposición o Mapa de Calor.
 - **Métrica de Calor:** Máxima (predeterminada), Promedio o Recuento.
 
@@ -225,6 +226,12 @@ Accesos directos: el botón **Comparar Visitas** en la barra de acciones del for
 ## 🖨️ Reportes del Encuentro
 
 El archivo `report.php` define la función `pain_zones_report()`. Genera una tabla HTML limpia con el detalle de las marcas (zona, lateralidad, intensidad, cualidad, notas), la cual OpenEMR integra de forma estándar en el historial del encuentro y en el resumen imprimible de la consulta médica.
+
+**Figura del cuerpo.** El reporte en pantalla muestra **solo la tabla de marcas** — no se dibuja ninguna figura fija. Al pasar el mouse por una fila se abre una **ventana flotante** junto al cursor con la figura del cuerpo y el detalle clínico de esa marca. La figura es el **panel representativo** del formulario (la figura + vista que concentra más marcas; en caso de empate, prioriza Adulto Masculino / Anterior), con sus zonas anatómicas teñidas por intensidad y un pin por marca, reutilizando la misma lógica de color que el mapa de calor de la comparación. Dentro de la ventana, la **zona y el pin de la fila apuntada se resaltan** mientras el resto se atenúa; las líneas clínicas muestran zona, lateralidad, un badge de intensidad, rango, cualidad, irradiación, inicio, duración, factores agravantes/atenuantes y notas.
+
+- **En la exportación a PDF** la figura se embebe junto a la tabla de marcas como `<img src="data:image/svg+xml;base64,…">`. Esto es intencional: mPDF solo dibuja el SVG cuando se referencia como **imagen** (`<img>`/`<input>`/`<meter>`); un elemento `<svg>` inline se ignora en silencio. El SVG se sanea (`pz_sanitizeSvgForPdf()`) — sin metadatos, filtros ni namespaces del editor — de modo que se renderiza sin archivos temporales.
+
+La bifurcación PDF/HTML se decide con `$GLOBALS['PDF_OUTPUT']`, que OpenEMR define en `custom_report.php` para las exportaciones imprimibles; el sumario del encuentro (`forms.php`) no lo define.
 
 Por otro lado, el resumen clínico editable en texto plano almacenado en `summary_text` (autocompletado por el formulario, con `pz_buildSummary()` del servidor como respaldo) ofrece un digesto compacto y legible de las marcas, pensado como contexto para la nota SOAP. No es lo mismo que el reporte tabular.
 

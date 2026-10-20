@@ -174,6 +174,351 @@ function pz_getSvgZoneIds(string $figure, string $body_view): array
 }
 
 // ---------------------------------------------------------------------------
+// SVG rendering helpers (shared by compare.php and the encounter report)
+//
+// These operate on the raw SVG markup: they tint anatomical zones and add a
+// pins layer. They are used both for the on-screen comparison page and for the
+// figure embedded in the encounter report / PDF.
+// ---------------------------------------------------------------------------
+
+/**
+ * Parses the SVG returned by pz_getSvgContent() and removes every base <title>
+ * element (Inkscape figure title and RDF metadata copies) so they cannot mask
+ * the tooltips we add.
+ */
+function pz_svgLoad(string $svg): \DOMDocument
+{
+    $doc = new \DOMDocument();
+    $previous = libxml_use_internal_errors(true);
+    $loaded = $doc->loadXML($svg, LIBXML_NONET);
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+
+    if (!$loaded || $doc->documentElement === null) {
+        throw new \RuntimeException('Unable to parse the Pain Zones SVG.');
+    }
+
+    $titles = [];
+    foreach ($doc->getElementsByTagName('title') as $title) {
+        $titles[] = $title;
+    }
+    foreach ($titles as $title) {
+        $title->parentNode?->removeChild($title);
+    }
+
+    return $doc;
+}
+
+/**
+ * Builds an id => element map for the SVG document.
+ *
+ * @return array<string, \DOMElement>
+ */
+function pz_svgIdMap(\DOMDocument $doc): array
+{
+    $map = [];
+    $xpath = new \DOMXPath($doc);
+    $nodes = $xpath->query('//*[@id]');
+
+    if ($nodes !== false) {
+        foreach ($nodes as $node) {
+            if ($node instanceof \DOMElement) {
+                $id = $node->getAttribute('id');
+                if ($id !== '') {
+                    $map[$id] = $node;
+                }
+            }
+        }
+    }
+
+    return $map;
+}
+
+/**
+ * Collects the drawable shapes of a zone, stopping at child zones so a parent
+ * zone never paints over a more specific one.
+ *
+ * @param string[] $validZoneIds
+ * @return \DOMElement[]
+ */
+function pz_svgCollectShapes(\DOMElement $node, bool $isRoot, array $validZoneIds): array
+{
+    $shapes = [];
+
+    if (!$isRoot) {
+        $id = $node->getAttribute('id');
+        if ($id !== '' && in_array($id, $validZoneIds, true)) {
+            return $shapes;
+        }
+    }
+
+    $tag = strtolower($node->localName ?? $node->tagName);
+    if (in_array($tag, ['path', 'polygon', 'rect', 'circle', 'ellipse'], true)) {
+        $shapes[] = $node;
+    }
+
+    foreach ($node->childNodes as $child) {
+        if ($child instanceof \DOMElement) {
+            $childShapes = pz_svgCollectShapes($child, false, $validZoneIds);
+            if ($childShapes !== []) {
+                $shapes = array_merge($shapes, $childShapes);
+            }
+        }
+    }
+
+    return $shapes;
+}
+
+/**
+ * Tints the marked zones and adds a native SVG tooltip to each one.
+ *
+ * @param array<string, array{color: array{fill: string, stroke: string}, tooltip: string}> $zoneHeat
+ * @param string[] $validZoneIds
+ */
+function pz_svgApplyHeat(string $svg, array $zoneHeat, array $validZoneIds): string
+{
+    $doc   = pz_svgLoad($svg);
+    $idMap = pz_svgIdMap($doc);
+
+    foreach ($zoneHeat as $zoneId => $heat) {
+        if (!isset($idMap[$zoneId])) {
+            continue;
+        }
+
+        $zoneEl = $idMap[$zoneId];
+        $shapes = pz_svgCollectShapes($zoneEl, true, $validZoneIds);
+
+        foreach ($shapes as $shape) {
+            $style = trim($shape->getAttribute('style'));
+            $style = rtrim($style, ';');
+            $style .= ($style === '' ? '' : ';')
+                . 'fill:' . $heat['color']['fill'] . ';fill-opacity:0.6;'
+                . 'stroke:' . $heat['color']['stroke'] . ';stroke-width:1.5px;';
+            $shape->setAttribute('style', $style);
+        }
+
+        $title = $doc->createElementNS('http://www.w3.org/2000/svg', 'title');
+        $title->appendChild($doc->createTextNode($heat['tooltip']));
+        $zoneEl->insertBefore($title, $zoneEl->firstChild);
+    }
+
+    $out = $doc->saveXML($doc->documentElement);
+
+    return ($out === false) ? $svg : $out;
+}
+
+/**
+ * Adds a pins layer on top of the SVG (one circle + intensity label per mark).
+ *
+ * @param array<int, array{mark: array<string, mixed>, color: string, tooltip: string}> $pins
+ */
+function pz_svgAddPins(string $svg, array $pins): string
+{
+    if ($pins === []) {
+        return $svg;
+    }
+
+    $doc  = pz_svgLoad($svg);
+    $root = $doc->documentElement;
+    if ($root === null) {
+        return $svg;
+    }
+
+    $parts = preg_split('/[\s,]+/', trim((string)$root->getAttribute('viewBox'))) ?: [];
+    if (count($parts) !== 4) {
+        return $svg;
+    }
+
+    $vx = (float)$parts[0];
+    $vy = (float)$parts[1];
+    $vw = (float)$parts[2];
+    $vh = (float)$parts[3];
+    if ($vw <= 0.0 || $vh <= 0.0) {
+        return $svg;
+    }
+
+    $radius   = max(10.0, $vh * 0.014);
+    $fontSize = max(10.0, $radius * 1.1);
+    $svgNs    = 'http://www.w3.org/2000/svg';
+
+    $layer = $doc->createElementNS($svgNs, 'g');
+    $layer->setAttribute('id', 'pz-compare-pins');
+
+    foreach ($pins as $pin) {
+        $mark = $pin['mark'];
+        $cx   = $vx + (((float)$mark['x_pct']) / 100.0) * $vw;
+        $cy   = $vy + (((float)$mark['y_pct']) / 100.0) * $vh;
+
+        $group = $doc->createElementNS($svgNs, 'g');
+
+        $title = $doc->createElementNS($svgNs, 'title');
+        $title->appendChild($doc->createTextNode($pin['tooltip']));
+        $group->appendChild($title);
+
+        $circle = $doc->createElementNS($svgNs, 'circle');
+        $circle->setAttribute('cx', (string)round($cx, 3));
+        $circle->setAttribute('cy', (string)round($cy, 3));
+        $circle->setAttribute('r', (string)round($radius, 3));
+        $circle->setAttribute('fill', $pin['color']);
+        $circle->setAttribute('stroke', '#212529');
+        $circle->setAttribute('stroke-width', (string)round(max(1.5, $radius * 0.12), 3));
+        $group->appendChild($circle);
+
+        $text = $doc->createElementNS($svgNs, 'text');
+        $text->setAttribute('x', (string)round($cx, 3));
+        $text->setAttribute('y', (string)round($cy, 3));
+        $text->setAttribute('text-anchor', 'middle');
+        $text->setAttribute('dominant-baseline', 'central');
+        $text->setAttribute('font-size', (string)round($fontSize, 3));
+        $text->setAttribute('font-weight', 'bold');
+        $text->setAttribute('font-family', 'sans-serif');
+        $text->setAttribute('fill', '#FFFFFF');
+        $text->setAttribute('stroke', '#000000');
+        $text->setAttribute('stroke-width', '0.5');
+        $text->setAttribute('paint-order', 'stroke');
+        $text->setAttribute('style', 'pointer-events: none;');
+        $text->appendChild($doc->createTextNode((string)(int)$mark['intensity']));
+        $group->appendChild($text);
+
+        $layer->appendChild($group);
+    }
+
+    $root->appendChild($layer);
+
+    $out = $doc->saveXML($root);
+
+    return ($out === false) ? $svg : $out;
+}
+
+/**
+ * Strips everything from an SVG that mPDF's SVG parser cannot draw, so the
+ * figure renders reliably in the PDF export.
+ *
+ * Specifically removed: the <metadata> block, the Inkscape <sodipodi:namedview>
+ * element, non-drawing <defs> members (Inkscape path-effects that have no
+ * <linearGradient>/<radialGradient> counterpart), every element attribute and
+ * namespace that is not part of plain SVG, and the root <title>.
+ *
+ * Kept: geometry (paths, gradients) and inline presentation styles, so the
+ * vector figure stays sharp at any zoom.
+ */
+function pz_sanitizeSvgForPdf(string $svg): string
+{
+    try {
+        $doc = pz_svgLoad($svg);
+    } catch (\RuntimeException) {
+        return $svg;
+    }
+
+    $root = $doc->documentElement;
+    if ($root === null) {
+        return $svg;
+    }
+
+    $svgNs = 'http://www.w3.org/2000/svg';
+    $xlinkNs = 'http://www.w3.org/1999/xlink';
+
+    // Drop non-drawing top-level blocks outright.
+    foreach (['metadata', 'namedview'] as $localName) {
+        $nodes = [];
+        foreach ($doc->getElementsByTagName('*') as $el) {
+            if ($el instanceof \DOMElement && strtolower((string)$el->localName) === $localName) {
+                $nodes[] = $el;
+            }
+        }
+        foreach ($nodes as $el) {
+            $el->parentNode?->removeChild($el);
+        }
+    }
+
+    // Remove non-drawing members from <defs> (keep gradients and their stops).
+    $defsNodes = [];
+    foreach ($doc->getElementsByTagName('*') as $el) {
+        if ($el instanceof \DOMElement && strtolower((string)$el->localName) === 'defs') {
+            $defsNodes[] = $el;
+        }
+    }
+    foreach ($defsNodes as $defs) {
+        $remove = [];
+        foreach ($defs->childNodes as $child) {
+            if (!$child instanceof \DOMElement) {
+                continue;
+            }
+            $tag = strtolower((string)$child->localName);
+            if (!in_array($tag, ['lineargradient', 'radialgradient', 'clipPath', 'clippath', 'pattern'], true)) {
+                $remove[] = $child;
+            }
+        }
+        foreach ($remove as $child) {
+            $defs->removeChild($child);
+        }
+        if (!$defs->hasChildNodes() || trim($defs->textContent) === '' && $defs->childNodes->length === 0) {
+            $defs->parentNode?->removeChild($defs);
+        }
+    }
+
+    // Rebuild the root element with a minimal, namespace-clean attribute set.
+    // mPDF only needs: version, viewBox, width/height (optional), and the two
+    // namespaces it resolves (svg and xlink).
+    $keepRootAttrs = ['viewbox', 'width', 'height', 'version', 'preserveaspectratio'];
+    $newRootAttrs  = [];
+    foreach ($root->attributes as $attr) {
+        if (!$attr instanceof \DOMAttr) {
+            continue;
+        }
+        $name = strtolower($attr->nodeName);
+        if (in_array($name, $keepRootAttrs, true)) {
+            $newRootAttrs[$attr->nodeName] = $attr->value;
+        }
+    }
+
+    // Also strip all custom/unknown attributes from every descendant, keeping
+    // only presentation and geometry attributes mPDF understands.
+    $allowedAttrs = [
+        'id', 'd', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry',
+        'width', 'height', 'points', 'transform', 'gradienttransform', 'gradientunits',
+        'offset', 'stop-color', 'stop-opacity', 'fill', 'fill-opacity', 'fill-rule',
+        'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin',
+        'stroke-dasharray', 'stroke-dashoffset', 'style', 'opacity', 'class',
+        'font-size', 'font-family', 'font-weight', 'font-style', 'text-anchor',
+        'dominant-baseline', 'paint-order', 'xlink:href', 'href', 'clip-path',
+    ];
+    foreach ($doc->getElementsByTagName('*') as $el) {
+        if (!$el instanceof \DOMElement || $el === $root) {
+            continue;
+        }
+        $removeAttrs = [];
+        foreach ($el->attributes as $attr) {
+            if (!$attr instanceof \DOMAttr) {
+                continue;
+            }
+            if (!in_array(strtolower($attr->nodeName), $allowedAttrs, true)) {
+                $removeAttrs[] = $attr->nodeName;
+            }
+        }
+        foreach ($removeAttrs as $name) {
+            $el->removeAttribute($name);
+        }
+    }
+
+    $out = '';
+    // Serialise manually so we fully control the root tag and namespaces.
+    $body = '';
+    foreach ($root->childNodes as $child) {
+        $body .= $doc->saveXML($child);
+    }
+
+    $attrs = ' xmlns="' . $svgNs . '" xmlns:xlink="' . $xlinkNs . '"';
+    foreach ($newRootAttrs as $name => $value) {
+        $attrs .= ' ' . $name . '="' . htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8') . '"';
+    }
+
+    $out = '<svg' . $attrs . '>' . $body . '</svg>';
+
+    return $out;
+}
+
+// ---------------------------------------------------------------------------
 // Color palette
 // ---------------------------------------------------------------------------
 
@@ -574,6 +919,245 @@ function pz_buildSummary(array $marks, ?string $generalNotes): string
 
     return implode("\n", $lines);
 }
+
+// ---------------------------------------------------------------------------
+// Report figure (encounter report / PDF)
+// ---------------------------------------------------------------------------
+
+/**
+ * Picks the figure + view that holds the most marks, so a single representative
+ * panel is shown in the encounter report. Ties break toward adult_male/anterior
+ * for deterministic output.
+ *
+ * @param array<int, array<string, mixed>> $marks
+ * @return array{figure: string, view: string}|null Null when there are no marks.
+ */
+function pz_pickReportPanel(array $marks): ?array
+{
+    $counts = [];
+    foreach ($marks as $mark) {
+        $figure = (string)($mark['figure'] ?? '');
+        $view   = (string)($mark['body_view'] ?? '');
+        if (!isset(PZ_FIGURE_MAP[$figure][$view])) {
+            continue;
+        }
+        $key = $figure . '|' . $view;
+        $counts[$key] = ($counts[$key] ?? 0) + 1;
+    }
+
+    if ($counts === []) {
+        return null;
+    }
+
+    $order = [];
+    foreach (array_keys(PZ_FIGURE_MAP) as $figure) {
+        foreach (['anterior', 'posterior'] as $view) {
+            if (isset(PZ_FIGURE_MAP[$figure][$view])) {
+                $order[] = $figure . '|' . $view;
+            }
+        }
+    }
+
+    $best = null;
+    $bestCount = -1;
+    foreach ($order as $key) {
+        $count = $counts[$key] ?? 0;
+        if ($count > $bestCount) {
+            $bestCount = $count;
+            $best = $key;
+        }
+    }
+
+    if ($best === null || $bestCount <= 0) {
+        return null;
+    }
+
+    [$figure, $view] = explode('|', $best);
+
+    return ['figure' => $figure, 'view' => $view];
+}
+
+/**
+ * Builds a ready-to-embed SVG for the encounter report: the representative panel
+ * with its zones tinted by intensity and one pin per mark.
+ *
+ * Returns two renderings of the same figure:
+ *   - 'svg'      : inline, sanitised SVG with the pins as small groups; the
+ *                  caller can attach hover tooltips in the browser.
+ *   - 'dataUri'  : the same SVG base64-encoded as an <img> source, which is the
+ *                  only form mPDF actually draws in the PDF export.
+ *
+ * @param array<int, array<string, mixed>> $marks Active marks of one form.
+ * @return array{
+ *     svg: string,
+ *     dataUri: string,
+ *     figure: string,
+ *     view: string,
+ *     pins: array<int, array{markId: string, zone: string, intensity: int, band: string, color: string, details: array<int, array{label: string, value: string}>, title: string}>
+ * }|null
+ */
+function pz_buildReportFigure(array $marks): ?array
+{
+    $panel = pz_pickReportPanel($marks);
+    if ($panel === null) {
+        return null;
+    }
+
+    $figure = $panel['figure'];
+    $view   = $panel['view'];
+
+    try {
+        $svg        = pz_getSvgContent($figure, $view);
+        $validZones = pz_getSvgZoneIds($figure, $view);
+    } catch (\Throwable) {
+        return null;
+    }
+
+    $palette  = pz_getLevelColors();
+    $validSet = array_flip($validZones);
+    $zoneHeat = [];
+    $pins     = [];
+    $pinData  = [];
+
+    foreach ($marks as $mark) {
+        if ((string)($mark['figure'] ?? '') !== $figure) {
+            continue;
+        }
+        if ((string)($mark['body_view'] ?? '') !== $view) {
+            continue;
+        }
+
+        $zoneId    = (string)($mark['zone_id'] ?? '');
+        $intensity = (int)($mark['intensity'] ?? 0);
+        $intensity = max(0, min(10, $intensity));
+
+        // One zone tile per zone, keeping the highest intensity in this panel.
+        if ($zoneId !== '' && isset($validSet[$zoneId])) {
+            if (!isset($zoneHeat[$zoneId]) || $intensity > $zoneHeat[$zoneId]['level']) {
+                $color = $palette['level_' . $intensity] ?? ['fill' => '#BDBDBD', 'stroke' => '#848484'];
+                $zoneHeat[$zoneId] = [
+                    'level'   => $intensity,
+                    'color'   => $color,
+                    'tooltip' => pz_zoneLabel($zoneId) . ' - ' . $intensity . '/10',
+                ];
+            }
+        }
+
+        $laterality = match ((string)($mark['laterality'] ?? 'midline')) {
+            'left'  => xl('Left'),
+            'right' => xl('Right'),
+            default => xl('Midline'),
+        };
+        $pins[] = [
+            'mark'    => $mark,
+            'color'   => $palette['level_' . $intensity]['fill'] ?? '#BDBDBD',
+            'tooltip' => pz_zoneLabel($zoneId) . ' (' . $laterality . ') - ' . $intensity . '/10',
+        ];
+
+        $pinData[] = [
+            'markId'    => (string)($mark['id'] ?? ''),
+            'zone'      => $zoneId,
+            'intensity' => $intensity,
+            'band'      => pz_intensityBandLabel($intensity),
+            'color'     => $palette['level_' . $intensity]['fill'] ?? '#455A64',
+            'details'   => pz_reportMarkDetails($mark, $laterality),
+            'title'     => pz_zoneLabel($zoneId) . ' (' . $laterality . ')',
+        ];
+    }
+
+    // Drop the helper key before tinting; pz_svgApplyHeat only reads color/tooltip.
+    $heatPayload = [];
+    foreach ($zoneHeat as $zoneId => $heat) {
+        $heatPayload[$zoneId] = ['color' => $heat['color'], 'tooltip' => $heat['tooltip']];
+    }
+
+    $svg = pz_svgApplyHeat($svg, $heatPayload, $validZones);
+    $svg = pz_svgAddPins($svg, $pins);
+    $svg = pz_sanitizeSvgForPdf($svg);
+
+    return [
+        'svg'     => $svg,
+        'dataUri' => 'data:image/svg+xml;base64,' . base64_encode($svg),
+        'figure'  => $figure,
+        'view'    => $view,
+        'pins'    => $pinData,
+    ];
+}
+
+/**
+ * Collects the clinical detail lines of a mark for the report tooltip.
+ * Only non-empty fields are returned, each already translated.
+ *
+ * @param array<string, mixed> $mark
+ * @return array<int, array{label: string, value: string}>
+ */
+function pz_reportMarkDetails(array $mark, string $laterality): array
+{
+    $details = [];
+    $details[] = ['label' => xl('Laterality'), 'value' => $laterality];
+
+    $quality = trim((string)($mark['pain_quality'] ?? ''));
+    if ($quality !== '') {
+        $details[] = ['label' => xl('Quality'), 'value' => pz_qualityLabel($quality)];
+    }
+
+    foreach ([
+        'radiation'   => xl('Radiation'),
+        'onset'       => xl('Onset'),
+        'duration'    => xl('Duration'),
+        'aggravating' => xl('Aggravating'),
+        'relieving'   => xl('Relieving'),
+        'notes'       => xl('Notes'),
+    ] as $field => $label) {
+        $value = trim((string)($mark[$field] ?? ''));
+        if ($value !== '') {
+            $details[] = ['label' => $label, 'value' => $value];
+        }
+    }
+
+    return $details;
+}
+
+// ---------------------------------------------------------------------------
+// Patient helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the patient's recorded sex at birth (patient_data.sex).
+ *
+ * OpenEMR stores the value using the 'sex' list_options whose options are
+ * Female / Male / UNK. An empty or 'UNK' value means the sex is not defined.
+ *
+ * @return string Raw value as stored (may be empty).
+ */
+function pz_patientSex(int $pid): string
+{
+    if ($pid <= 0) {
+        return '';
+    }
+
+    $rows = \OpenEMR\Common\Database\QueryUtils::fetchRecords(
+        'SELECT sex FROM patient_data WHERE pid = ? LIMIT 1',
+        [$pid]
+    );
+
+    return trim((string)($rows[0]['sex'] ?? ''));
+}
+
+/**
+ * Maps the patient's recorded sex to the body figure that should be shown.
+ *
+ * OpenEMR stores the value in patient_data.sex using the 'sex' list_options
+ * (Female / Male / UNK). Anything that is not explicitly female falls back to
+ * the male figure, which is the historical default of the module.
+ *
+ * @return string 'adult_female' or 'adult_male'
+ */
+function pz_patientFigure(int $pid): string
+{
+    return (strcasecmp(pz_patientSex($pid), 'female') === 0) ? 'adult_female' : 'adult_male';
+}
+
 
 // ---------------------------------------------------------------------------
 // ACL helpers

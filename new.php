@@ -123,20 +123,37 @@ foreach ($existingMarks as $m) {
     ];
 }
 
-// 7. Determine initial panel: panel with most marks (tie: adult_male + anterior).
-$initialFigure = 'adult_male';
-$initialView   = 'anterior';
-$maxMarks      = $counts['adult_male']['anterior'];
+// 7. Determine initial panel.
+// The figure is fixed to the patient's recorded sex at birth (patient_data.sex).
+// The view opens on the side that holds the most marks for the patient figure
+// (tie: anterior), so existing data is the first thing the user sees.
+$patientFigure  = pz_patientFigure($pid);
+$patientSex     = pz_patientSex($pid);
+$sexUndefined   = ($patientSex === '' || strcasecmp($patientSex, 'UNK') === 0);
 
-foreach (['adult_male', 'adult_female'] as $fig) {
-    foreach (['anterior', 'posterior'] as $vw) {
-        if ($counts[$fig][$vw] > $maxMarks) {
-            $maxMarks      = $counts[$fig][$vw];
-            $initialFigure = $fig;
-            $initialView   = $vw;
-        }
-    }
+$initialFigure = $patientFigure;
+$initialView   = ($counts[$patientFigure]['posterior'] > $counts[$patientFigure]['anterior'])
+    ? 'posterior'
+    : 'anterior';
+
+// A saved form may hold marks drawn on the opposite figure (e.g. legacy data
+// captured before the figure followed the patient). Such marks are never
+// dropped: when they exist, the figure selector offers both panels so the user
+// can still reach them.
+$otherFigure   = ($patientFigure === 'adult_female') ? 'adult_male' : 'adult_female';
+$hasOtherMarks = (($counts[$otherFigure]['anterior'] + $counts[$otherFigure]['posterior']) > 0);
+$figureChoices = [
+    $patientFigure => $patientFigure,
+];
+if ($hasOtherMarks) {
+    $figureChoices[$otherFigure] = $otherFigure;
 }
+
+$figureLabels = [
+    'adult_male'   => xl('Adult Male'),
+    'adult_female' => xl('Adult Female'),
+];
+$figureLabel  = $figureLabels[$patientFigure];
 
 // 8. Prepare assets: palette, valid zones, and SVGs.
 $palette    = pz_getLevelColors();
@@ -445,18 +462,25 @@ $compareUrl = $rootdir . '/forms/pain_zones/compare.php?return=' . attr_url($nat
     <!-- Error Banner -->
     <div id="pz-error-banner" class="alert alert-danger" style="display:none;" role="alert"></div>
 
-    <!-- Selectors: Figure & Body View Radios -->
+    <?php if ($sexUndefined): ?>
+        <div class="alert alert-warning py-2 mb-3" role="alert">
+            <?php echo xlt('Patient sex is not defined (Sex at birth is empty or Unknown). The male diagram is shown; please complete the sex in the patient record.'); ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- Selectors: Figure (fixed to the patient sex) & Body View Radios -->
     <div class="d-flex flex-wrap align-items-center p-2 bg-white border rounded shadow-sm mb-3">
         <div class="d-flex align-items-center">
             <span class="font-weight-bold text-secondary mr-2"><?php echo xlt('Figure:'); ?></span>
-            <div class="form-check form-check-inline mb-0 mr-3">
-                <input class="form-check-input" type="radio" name="figure" id="pz-fig-male" value="adult_male"<?php echo $initialFigure === 'adult_male' ? ' checked' : ''; ?>>
-                <label class="form-check-label" for="pz-fig-male" id="pz-lbl-fig-male"><?php echo xlt('Adult Male'); ?> (<?php echo (int)($counts['adult_male']['anterior'] + $counts['adult_male']['posterior']); ?>)</label>
-            </div>
-            <div class="form-check form-check-inline mb-0 mr-2">
-                <input class="form-check-input" type="radio" name="figure" id="pz-fig-female" value="adult_female"<?php echo $initialFigure === 'adult_female' ? ' checked' : ''; ?>>
-                <label class="form-check-label" for="pz-fig-female" id="pz-lbl-fig-female"><?php echo xlt('Adult Female'); ?> (<?php echo (int)($counts['adult_female']['anterior'] + $counts['adult_female']['posterior']); ?>)</label>
-            </div>
+            <?php if (count($figureChoices) > 1): ?>
+                <select id="pz-figure-select" name="figure" class="form-control form-control-sm mr-3" style="width:auto;">
+                    <?php foreach ($figureChoices as $figValue): ?>
+                        <option value="<?php echo attr($figValue); ?>"<?php echo $initialFigure === $figValue ? ' selected' : ''; ?>><?php echo text($figureLabels[$figValue]); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            <?php else: ?>
+                <div id="pz-figure-fixed" class="form-control form-control-sm bg-light text-muted mr-3" style="width:auto;"><?php echo text($figureLabel); ?></div>
+            <?php endif; ?>
         </div>
         <div class="border-left mx-3 my-1" style="width: 1px; height: 24px;"></div>
         <div class="d-flex align-items-center">
@@ -1561,8 +1585,8 @@ $compareUrl = $rootdir . '/forms/pain_zones/compare.php?return=' . attr_url($nat
                     PZ.currentFigure = mark.figure;
                     PZ.currentView   = mark.body_view;
 
-                    const figRadio = document.querySelector('input[name="figure"][value="' + mark.figure + '"]');
-                    if (figRadio) figRadio.checked = true;
+                    const figSelect = document.getElementById('pz-figure-select');
+                    if (figSelect) figSelect.value = mark.figure;
 
                     const viewRadio = document.querySelector('input[name="body_view"][value="' + mark.body_view + '"]');
                     if (viewRadio) viewRadio.checked = true;
@@ -1620,26 +1644,15 @@ $compareUrl = $rootdir . '/forms/pain_zones/compare.php?return=' . attr_url($nat
 
     // Radio counter synchronization
     function updateRadioCounters() {
-        let maleTotal = 0;
-        let femaleTotal = 0;
         let antTotal = 0;
         let postTotal = 0;
 
         PZ.marks.forEach(m => {
-            if (m.figure === 'adult_male') maleTotal++;
-            if (m.figure === 'adult_female') femaleTotal++;
-
             if (m.figure === PZ.currentFigure) {
                 if (m.body_view === 'anterior') antTotal++;
                 if (m.body_view === 'posterior') postTotal++;
             }
         });
-
-        const lblMale = document.getElementById('pz-lbl-fig-male');
-        if (lblMale) lblMale.textContent = <?php echo xlj('Adult Male'); ?> + ' (' + maleTotal + ')';
-
-        const lblFemale = document.getElementById('pz-lbl-fig-female');
-        if (lblFemale) lblFemale.textContent = <?php echo xlj('Adult Female'); ?> + ' (' + femaleTotal + ')';
 
         const lblAnt = document.getElementById('pz-lbl-view-ant');
         if (lblAnt) lblAnt.textContent = <?php echo xlj('Anterior'); ?> + ' (' + antTotal + ')';
@@ -1648,16 +1661,19 @@ $compareUrl = $rootdir . '/forms/pain_zones/compare.php?return=' . attr_url($nat
         if (lblPost) lblPost.textContent = <?php echo xlj('Posterior'); ?> + ' (' + postTotal + ')';
     }
 
-    // Radio event listeners
-    document.querySelectorAll('input[name="figure"]').forEach(radio => {
-        radio.addEventListener('change', (e) => {
+    // Figure selector: only present when a saved form holds marks on the
+    // opposite figure (legacy data). Its purpose is to reach those marks, not
+    // to freely pick a figure.
+    const figureSelect = document.getElementById('pz-figure-select');
+    if (figureSelect) {
+        figureSelect.addEventListener('change', (e) => {
             PZ.currentFigure = e.target.value;
             resetZoomPan(false);
             renderSvg();
             renderSidebarMarks();
             updateRadioCounters();
         });
-    });
+    }
 
     document.querySelectorAll('input[name="body_view"]').forEach(radio => {
         radio.addEventListener('change', (e) => {

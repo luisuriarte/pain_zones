@@ -333,7 +333,6 @@ function pz_compareAddPinsToSvg(string $svg, array $pins): string
 
 $allowedModes   = ['overlay', 'heatmap'];
 $allowedRanges  = ['30d', '3m', '6m', '12m', 'all', 'custom'];
-$allowedFigures = array_keys(PZ_FIGURE_MAP);
 $allowedViews   = ['anterior', 'posterior'];
 $allowedMetrics = ['max', 'avg', 'count'];
 
@@ -468,12 +467,10 @@ foreach ($markRows as $mark) {
     }
 }
 
-$figure = (string)($_GET['figure'] ?? '');
-if (!in_array($figure, $allowedFigures, true)) {
-    $figure = ($figureCounts['adult_female'] > $figureCounts['adult_male'])
-        ? 'adult_female'
-        : 'adult_male';
-}
+// The figure is fixed to the patient's recorded sex (patient_data.sex): the
+// anatomical map must match the patient, so it is not user-selectable. Only the
+// view stays selectable.
+$figure = pz_patientFigure($pid);
 
 $view = (string)($_GET['view'] ?? '');
 if (!in_array($view, $allowedViews, true)) {
@@ -873,11 +870,8 @@ $legendGradient = 'linear-gradient(to right, ' . implode(', ', $legendStops) . '
                 </div>
 
                 <div class="col-md-2 mb-2">
-                    <label for="pz-figure" class="small font-weight-bold"><?php echo xlt('Figure'); ?></label>
-                    <select id="pz-figure" name="figure" class="form-control form-control-sm" data-pz-autosubmit>
-                        <option value="adult_male"<?php echo $figure === 'adult_male' ? ' selected' : ''; ?>><?php echo xlt('Adult Male'); ?></option>
-                        <option value="adult_female"<?php echo $figure === 'adult_female' ? ' selected' : ''; ?>><?php echo xlt('Adult Female'); ?></option>
-                    </select>
+                    <label class="small font-weight-bold d-block"><?php echo xlt('Figure'); ?></label>
+                    <div class="form-control form-control-sm bg-light text-muted"><?php echo text($figureLabel); ?></div>
                 </div>
 
                 <div class="col-md-2 mb-2">

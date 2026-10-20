@@ -45,6 +45,7 @@ INSERT IGNORE INTO lang_custom (lang_description, lang_code, constant_name, defi
 ('Spanish (Latin American)', 'el', 'Figure', 'Figura'),
 ('Spanish (Latin American)', 'el', 'Adult Male', 'Hombre Adulto'),
 ('Spanish (Latin American)', 'el', 'Adult Female', 'Mujer Adulta'),
+('Spanish (Latin American)', 'el', 'Patient sex is not defined (Sex at birth is empty or Unknown). The male diagram is shown; please complete the sex in the patient record.', 'El sexo del paciente no está definido (el Sexo al nacer está vacío o es Desconocido). Se muestra el diagrama masculino; complete el sexo en la ficha del paciente.'),
 ('Spanish (Latin American)', 'el', 'Male', 'Masculino'),
 ('Spanish (Latin American)', 'el', 'Female', 'Femenino'),
 ('Spanish (Latin American)', 'el', 'View:', 'Vista:'),

@@ -191,10 +191,11 @@ mysql -u openemr -p openemr < /var/www/html/openemr/interface/forms/pain_zones/l
 ## 🩺 Clinical Workflow
 
 1. **Open Form:** During an active encounter, select **Clinical Forms > Pain Zones**.
-2. **Zoom & Position:** Use the mouse wheel or floating buttons to zoom in. Drag with the right mouse button to pan across the figure.
-3. **Place Mark:** Left-click on any body zone. Enter the intensity (0–10), quality, radiation, and notes in the dialog.
-4. **Edit or Remove:** Click any pin on the map or select an entry in the sidebar list to modify or delete a mark.
-5. **Review & Save:** Confirming each mark fills the editable **Summary Text** box; correct it if needed (or click **Regenerate**). Clicking **Save Form** persists the marks and the reviewed summary in a single transaction, then the tab closes, refreshing the encounter view.
+2. **Figure:** the body diagram is **fixed to the patient's recorded sex at birth** (`patient_data.sex`, the *Sex at birth* field): a **Female** patient gets the female diagram, **Male** the male one, and anything else (empty or `UNK`) falls back to the male diagram **with a visible warning** asking to complete the sex in the patient record. The figure is **not user-selectable**. If a saved form still holds marks drawn on the opposite figure (legacy data), a figure selector appears offering both panels so those marks remain reachable — never hidden.
+3. **Zoom & Position:** Use the mouse wheel or floating buttons to zoom in. Drag with the right mouse button to pan across the figure.
+4. **Place Mark:** Left-click on any body zone. Enter the intensity (0–10), quality, radiation, and notes in the dialog.
+5. **Edit or Remove:** Click any pin on the map or select an entry in the sidebar list to modify or delete a mark.
+6. **Review & Save:** Confirming each mark fills the editable **Summary Text** box; correct it if needed (or click **Regenerate**). Clicking **Save Form** persists the marks and the reviewed summary in a single transaction, then the tab closes, refreshing the encounter view.
 
 ---
 
@@ -205,7 +206,7 @@ mysql -u openemr -p openemr < /var/www/html/openemr/interface/forms/pain_zones/l
 **Filters (all validated server-side; unknown values fall back to defaults):**
 
 - **Date Range:** last 30 days, last 3 / 6 / 12 months (default), all time, or a custom `From`–`To` window. Impossible dates fall back to the default 12 months, and a reversed window is swapped automatically.
-- **Figure / View:** Adult Male or Adult Female, Anterior or Posterior. The page opens on the panel that has the most data in the selected range.
+- **Figure / View:** the figure is **fixed to the patient's recorded sex** (`patient_data.sex`): a female patient sees the female diagram, everyone else the male one. It is not user-selectable, so a stale `?figure=…` link is ignored. Only the **View** (Anterior or Posterior) is chosen; the page opens on the panel that has the most data in the selected range.
 - **Mode:** Overlay or Heatmap.
 - **Heat Metric:** Maximum (default), Average, or Count.
 
@@ -226,6 +227,12 @@ Entry points: the **Compare Visits** button in the form's action bar and the **C
 ## 🖨️ Encounter Reports
 
 The file `report.php` implements `pain_zones_report()`. It generates a clean HTML table detailing all marks, intensities, qualities, and notes, which OpenEMR embeds automatically into the patient's encounter record and printable chart export.
+
+**Body figure.** The on-screen report shows the **marks table only** — no figure is drawn inline. Hovering a row opens a **floating window** next to the cursor with the body figure plus that mark's clinical detail. The figure is the **representative panel** for that form (the figure + view that holds the most marks; ties break toward Adult Male / Anterior), with its anatomical zones tinted by intensity and one pin per mark, reusing the same coloring logic as the comparison heat map. Inside the window the hovered mark's **zone and pin are highlighted** while the rest fade into the background; the clinical lines show zone, laterality, an intensity badge, band, quality, radiation, onset, duration, aggravating/relieving factors, and notes.
+
+- **In the PDF export** the figure is embedded beside the marks table as `<img src="data:image/svg+xml;base64,…">`. This is deliberate: mPDF only draws SVG that is referenced as an **image** (`<img>`/`<input>`/`<meter>`); an inline `<svg>` element is silently ignored. The SVG is sanitised (`pz_sanitizeSvgForPdf()`) — no metadata, filters, or editor namespaces — so it renders without temporary files.
+
+The PDF/HTML switch is decided by `$GLOBALS['PDF_OUTPUT']`, which OpenEMR's `custom_report.php` sets for printable exports; the encounter summary (`forms.php`) does not set it.
 
 Separately, the editable plain-text clinical summary stored in `summary_text` (auto-filled by the form, with server-side `pz_buildSummary()` as fallback) provides a compact, human-readable digest of the marks for use as context in the SOAP note. It is not the same as the tabular report.
 
