@@ -444,6 +444,7 @@ INSERT IGNORE INTO lang_custom (lang_description, lang_code, constant_name, defi
 ('Spanish (Latin American)', 'el', 'Date', 'Fecha'),
 ('Spanish (Latin American)', 'el', 'Last visit', 'Última visita'),
 ('Spanish (Latin American)', 'el', 'Zone Heat', 'Calor por Zona'),
+('Spanish (Latin American)', 'el', 'Zone shading', 'Sombreado de zona'),
 ('Spanish (Latin American)', 'el', 'Visits with mark', 'Visitas con marca'),
 ('Spanish (Latin American)', 'el', 'Patient', 'Paciente'),
 ('Spanish (Latin American)', 'el', 'Print', 'Imprimir'),
