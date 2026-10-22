@@ -141,19 +141,21 @@ INSERT IGNORE INTO `list_options`
 SELECT 'lists', 'pain_zones_quality', 'Pain Zones Quality', COALESCE(MAX(`seq`), 0) + 1, 0, 0, '', '', '', 1
 FROM `list_options` WHERE `list_id` = 'lists';
 
+-- Quality levels. codes = SNOMED CT concept id (format SNOMED-CT:<id>).
+-- Rows with an empty codes field have no verified SNOMED CT concept yet.
 INSERT IGNORE INTO `list_options`
   (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `activity`)
 VALUES
-  ('pain_zones_quality', 'sharp',     'Sharp',     10,  0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'dull',      'Dull',      20,  0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'burning',   'Burning',   30,  0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'throbbing', 'Throbbing', 40,  0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'stabbing',  'Stabbing',  50,  0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'cramping',  'Cramping',  60,  0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'pressing',  'Pressing',  70,  0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'shooting',  'Shooting',  80,  0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'aching',    'Aching',    90,  0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'electric',  'Electric',  100, 0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'tingling',  'Tingling',  110, 0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'heavy',     'Heavy',     120, 0, 0, '', '', '', 1),
-  ('pain_zones_quality', 'other',     'Other',     130, 0, 0, '', '', '', 1);
+  ('pain_zones_quality', 'sharp',     'Sharp',     10,  0, 0, '', '', 'SNOMED-CT:8708008',   1),
+  ('pain_zones_quality', 'dull',      'Dull',      20,  0, 0, '', '', 'SNOMED-CT:83644001',  1),
+  ('pain_zones_quality', 'burning',   'Burning',   30,  0, 0, '', '', 'SNOMED-CT:36349006',  1),
+  ('pain_zones_quality', 'throbbing', 'Throbbing', 40,  0, 0, '', '', 'SNOMED-CT:29695002',  1),
+  ('pain_zones_quality', 'stabbing',  'Stabbing',  50,  0, 0, '', '', 'SNOMED-CT:55145008',  1),
+  ('pain_zones_quality', 'cramping',  'Cramping',  60,  0, 0, '', '', 'SNOMED-CT:279093005', 1),
+  ('pain_zones_quality', 'pressing',  'Pressing',  70,  0, 0, '', '', 'SNOMED-CT:162505000', 1),
+  ('pain_zones_quality', 'shooting',  'Shooting',  80,  0, 0, '', '', 'SNOMED-CT:49575005',  1),
+  ('pain_zones_quality', 'aching',    'Aching',    90,  0, 0, '', '', 'SNOMED-CT:27635008',  1),
+  ('pain_zones_quality', 'electric',  'Electric',  100, 0, 0, '', '', 'SNOMED-CT:723316007', 1),
+  ('pain_zones_quality', 'tingling',  'Tingling',  110, 0, 0, '', '', 'SNOMED-CT:786837007', 1),
+  ('pain_zones_quality', 'heavy',     'Heavy',     120, 0, 0, '', '', 'SNOMED-CT:279095003', 1),
+  ('pain_zones_quality', 'other',     'Other',     130, 0, 0, '', '', '',                    1);
